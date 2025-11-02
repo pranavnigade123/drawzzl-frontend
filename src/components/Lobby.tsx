@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { socket } from '@/lib/socket';
 import { Copy, Users, AlertCircle, Gamepad2, Crown, Loader2 } from 'lucide-react';
-import Canvas from './Canvas'; // adjust the path if your Canvas file lives elsewhere
+import Canvas from './Canvas';
 
 const createSchema = z.object({
   playerName: z.string().min(2, 'Name too short').max(20, 'Name too long'),
@@ -27,6 +27,14 @@ export default function Lobby() {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [currentWord, setCurrentWord] = useState<string | undefined>();
+  const [wordHint, setWordHint] = useState('');
+  const [drawerId, setDrawerId] = useState('');
+  const [timeLeft, setTimeLeft] = useState(60);
+
+  const isCreator = players[0]?.id === socket.id;
+  const iAmDrawer = drawerId === socket.id;
 
   useEffect(() => setMounted(true), []);
 
@@ -63,17 +71,32 @@ export default function Lobby() {
       setPlayers(data.players);
     };
 
+    const onGameStarted = (data: { drawerId: string; wordHint: string; timeLeft: number }) => {
+      setGameStarted(true);
+      setDrawerId(data.drawerId);
+      setWordHint(data.wordHint);
+      setTimeLeft(data.timeLeft);
+    };
+
+    const onYourWord = ({ word }: { word: string }) => {
+      setCurrentWord(word);
+    };
+
     const onError = (data: any) => setError(data.message);
 
     socket.on('roomCreated', onRoomCreated);
     socket.on('roomJoined', onRoomJoined);
     socket.on('playerJoined', onPlayerJoined);
+    socket.on('gameStarted', onGameStarted);
+    socket.on('yourWord', onYourWord);
     socket.on('error', onError);
 
     return () => {
       socket.off('roomCreated', onRoomCreated);
       socket.off('roomJoined', onRoomJoined);
       socket.off('playerJoined', onPlayerJoined);
+      socket.off('gameStarted', onGameStarted);
+      socket.off('yourWord', onYourWord);
       socket.off('error', onError);
     };
   }, [createForm]);
@@ -81,6 +104,10 @@ export default function Lobby() {
   const onCreate = (data: CreateForm) => socket.emit('createRoom', { playerName: data.playerName });
   const onJoin = (data: JoinForm) =>
     socket.emit('joinRoom', { roomId: data.roomId.toUpperCase(), playerName: data.playerName });
+
+  const startGame = () => {
+    socket.emit('startGame', { roomId });
+  };
 
   if (!mounted) {
     return (
@@ -97,13 +124,8 @@ export default function Lobby() {
     );
   }
 
-  // Neon gamer vibe UI
-  const drawerId = players.find((p) => p.isDrawer)?.id;
-  const iAmDrawer = drawerId === socket.id;
-
   return (
     <div className="min-h-screen relative overflow-hidden bg-zinc-950">
-      {/* Ambient glows + subtle grid */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute -top-32 -left-24 h-80 w-80 rounded-full bg-fuchsia-500/25 blur-3xl" />
         <div className="absolute top-1/3 -right-24 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl" />
@@ -140,9 +162,9 @@ export default function Lobby() {
           </div>
         )}
 
-        {roomId ? (
+        {/* LOBBY VIEW */}
+        {roomId && !gameStarted ? (
           <div className="space-y-6">
-            {/* Room Info */}
             <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                 <div>
@@ -159,7 +181,6 @@ export default function Lobby() {
                     </button>
                   </div>
                 </div>
-
                 <div className="rounded-lg border border-fuchsia-400/30 bg-fuchsia-400/10 px-3 py-2 text-xs text-fuchsia-100">
                   Invite friends with the code
                 </div>
@@ -189,55 +210,64 @@ export default function Lobby() {
                   </div>
                 ))}
               </div>
-            </section>
 
-            {/* Canvas Card */}
-            <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-white/90">Canvas</h3>
-                {iAmDrawer ? (
-                  <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-sm font-medium text-amber-100">
-                    Draw: <span className="underline underline-offset-2">APPLE</span>
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-sm font-medium text-cyan-100">
-                    Guess the word!
-                  </div>
-                )}
-              </div>
-
-              <div className="overflow-x-auto">
-                {/* Your Canvas component (internals unchanged) */}
-                <Canvas
-                  roomId={roomId}
-                  isDrawer={iAmDrawer}
-                  currentWord={iAmDrawer ? 'APPLE' : undefined}
-                />
-              </div>
+              {/* START GAME BUTTON */}
+              {isCreator && players.length >= 2 && (
+                <button
+                  onClick={startGame}
+                  className="w-full mt-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:scale-105 transition transform active:scale-95 shadow-lg"
+                >
+                  Start Game
+                </button>
+              )}
             </section>
           </div>
+        ) : roomId && gameStarted ? (
+          /* GAME VIEW */
+          <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white/90">Canvas</h3>
+              {iAmDrawer ? (
+                <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-sm font-medium text-amber-100">
+                  Draw: <span className="underline underline-offset-2">{currentWord}</span>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-sm font-medium text-cyan-100">
+                  {wordHint || 'Guess the word!'}
+                </div>
+              )}
+            </div>
+
+            <div className="overflow-x-auto">
+              <Canvas
+                roomId={roomId}
+                isDrawer={iAmDrawer}
+                currentWord={iAmDrawer ? currentWord : undefined}
+              />
+            </div>
+          </section>
         ) : (
-          // ------------ Create / Join forms (unchanged logic, neon UI) ------------
+          /* CREATE / JOIN FORMS */
           <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur max-w-lg mx-auto">
             <div className="mb-6 grid grid-cols-2 rounded-xl border border-white/10 bg-white/5 p-1">
               <button
                 onClick={() => setMode('create')}
-                className={`w-full rounded-lg px-4 py-2.5 text-sm font-medium transition
-                ${mode === 'create'
+                className={`w-full rounded-lg px-4 py-2.5 text-sm font-medium transition ${
+                  mode === 'create'
                     ? 'bg-gradient-to-r from-fuchsia-500/30 to-cyan-500/30 text-white shadow-inner'
                     : 'text-white/70 hover:text-white'
-                  } focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400`}
+                } focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400`}
                 aria-pressed={mode === 'create'}
               >
                 Create room
               </button>
               <button
                 onClick={() => setMode('join')}
-                className={`w-full rounded-lg px-4 py-2.5 text-sm font-medium transition
-                ${mode === 'join'
+                className={`w-full rounded-lg px-4 py-2.5 text-sm font-medium transition ${
+                  mode === 'join'
                     ? 'bg-gradient-to-r from-fuchsia-500/30 to-cyan-500/30 text-white shadow-inner'
                     : 'text-white/70 hover:text-white'
-                  } focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400`}
+                } focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400`}
                 aria-pressed={mode === 'join'}
               >
                 Join room
@@ -345,7 +375,6 @@ export default function Lobby() {
         )}
       </main>
 
-      {/* hover glow helper for buttons */}
       <script
         dangerouslySetInnerHTML={{
           __html: `
