@@ -1,4 +1,3 @@
-// src/components/lobby/ClientOnlyLobby.tsx
 'use client';
 
 import { useState } from 'react';
@@ -26,7 +25,7 @@ export default function ClientOnlyLobby() {
           onClick={() => setMode('create')}
           className={`rounded-lg px-4 py-2.5 text-sm font-medium transition ${
             mode === 'create'
-              ? 'bg-gradient-to-r from-fuchsia-500/30 to-cyan-500/30 text-white shadow-inner'
+              ? 'bg-linear-to-r from-fuchsia-500/30 to-cyan-500/30 text-white shadow-inner'
               : 'text-white/70 hover:text-white'
           }`}
         >
@@ -36,13 +35,14 @@ export default function ClientOnlyLobby() {
           onClick={() => setMode('join')}
           className={`rounded-lg px-4 py-2.5 text-sm font-medium transition ${
             mode === 'join'
-              ? 'bg-gradient-to-r from-fuchsia-500/30 to-cyan-500/30 text-white shadow-inner'
+              ? 'bg-linear-to-r from-fuchsia-500/30 to-cyan-500/30 text-white shadow-inner'
               : 'text-white/70 hover:text-white'
           }`}
         >
           Join room
         </button>
       </div>
+
       {mode === 'create' ? (
         <CreateRoom onCreate={handleCreate} />
       ) : (
