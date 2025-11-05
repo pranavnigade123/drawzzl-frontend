@@ -1,19 +1,17 @@
 // src/components/lobby/LobbyContainer.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
-import CreateRoom from './CreateRoom';
-import JoinRoom from './JoinRoom';
+import { useEffect } from 'react';
+import ClientOnlyLobby from './ClientOnlyLobby';
 import RoomCard from './RoomCard';
 import Canvas from '@/components/Canvas';
 import ChatBox from '@/components/game/ChatBox';
 import Timer from '@/components/game/Timer';
 import WordHint from '@/components/game/WordHint';
+import ConfettiEffect from '@/components/game/ConfettiEffect';
+import FinalLeaderboard from '@/components/game/FinalLeaderboard';
 import { useGameStore } from '@/store/useGameStore';
 import { socket } from '@/lib/socket';
-import ClientOnlyLobby from './ClientOnlyLobby';
-
-type Mode = 'create' | 'join';
 
 export default function LobbyContainer() {
   const {
@@ -29,12 +27,10 @@ export default function LobbyContainer() {
     setMaxRounds,
     setPlayers,
     addChat,
-    reset
+    setConfetti,
+    setGameEnded
   } = useGameStore();
 
-  const [mode, setMode] = useState<Mode>('create');
-
-  // Find current player
   const me = players.find(p => p.id === socket.id);
   const isDrawer = me?.isDrawer || false;
 
@@ -43,10 +39,12 @@ export default function LobbyContainer() {
       roomCreated: (data: { roomId: string }) => {
         useGameStore.getState().setRoomId(data.roomId);
         useGameStore.getState().setIsCreator(true);
+        useGameStore.getState().setGameEnded(false); // ← Reset on join
       },
       roomJoined: (data: { roomId: string }) => {
         useGameStore.getState().setRoomId(data.roomId);
         useGameStore.getState().setIsCreator(false);
+        useGameStore.getState().setGameEnded(false); // ← Reset on join
       },
       playerJoined: (data: { players: any[] }) => {
         setPlayers(data.players || []);
@@ -79,6 +77,11 @@ export default function LobbyContainer() {
             pl.id === p.playerId ? { ...pl, score: p.total } : pl
           )
         );
+
+        if (p.playerId === socket.id) {
+          setConfetti(true);
+          setTimeout(() => setConfetti(false), 3000);
+        }
       },
       turnEnded: (d: any) => {
         addChat({ id: 'server', name: 'Game', msg: `Word was: ${d.word}` });
@@ -91,7 +94,9 @@ export default function LobbyContainer() {
         sorted.forEach((p: any, i: number) => {
           addChat({ id: `rank-${i}`, name: `${i + 1}. ${p.name}`, msg: `Score ${p.score}` });
         });
+
         setGameStarted(false);
+        setGameEnded(true); // ← Now triggers modal
         setCurrentWord(undefined);
         setWordHint('');
         setTimeLeft(0);
@@ -120,44 +125,36 @@ export default function LobbyContainer() {
     setRound,
     setMaxRounds,
     setPlayers,
-    addChat
+    addChat,
+    setConfetti,
+    setGameEnded
   ]);
 
-  const handleCreate = (name: string) => {
-    socket.emit('createRoom', { playerName: name });
-  };
-
-  const handleJoin = (roomId: string, name: string) => {
-    socket.emit('joinRoom', { roomId, playerName: name });
-  };
-
-  // Replace the entire lobby section (when !roomId)
-if (!roomId) {
-  return (
-    <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full">
-        <header className="text-center mb-8">
-          <h1 className="text-3xl font-bold">Drawzzl</h1>
-          <p className="text-white/60 text-sm">Real-time drawing & guessing</p>
-        </header>
-
-        <ClientOnlyLobby />
+  if (!roomId) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-4">
+        <div className="max-w-2xl w-full">
+          <header className="text-center mb-8">
+            <h1 className="text-3xl font-bold">Drawzzl</h1>
+            <p className="text-white/60 text-sm">Real-time drawing & guessing</p>
+          </header>
+          <ClientOnlyLobby />
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-4">
       <div className="max-w-6xl mx-auto">
         {!gameStarted ? (
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <RoomCard />
             <ChatBox />
           </div>
         ) : (
-          <section className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-4">
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-4 order-2 lg:order-1">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-lg font-semibold">Canvas</h3>
                 <div className="flex items-center gap-3">
@@ -173,13 +170,16 @@ if (!roomId) {
                 />
               </div>
             </div>
-            <div className="space-y-6">
+            <div className="space-y-6 order-1 lg:order-2">
               <ChatBox />
               <RoomCard />
             </div>
           </section>
         )}
       </div>
+
+      <ConfettiEffect />
+      <FinalLeaderboard />
     </div>
   );
 }

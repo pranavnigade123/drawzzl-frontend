@@ -1,33 +1,34 @@
-// src/components/lobby/RoomCard.tsx
 'use client';
 
 import { useGameStore } from '@/store/useGameStore';
-import { Crown, Users, Copy, Loader2 } from 'lucide-react';
 import { socket } from '@/lib/socket';
+import { Copy, Crown, Users } from 'lucide-react';
 
 export default function RoomCard() {
-  const { roomId, players, isCreator, gameStarted, setGameStarted } = useGameStore();
+  const { roomId, players, isCreator, gameStarted } = useGameStore();
 
-  const startGame = () => {
-    if (!roomId) return;
-    socket.emit('startGame', { roomId });
-  };
+  if (!roomId) return null;
 
   const copyRoomId = () => {
     if (roomId) navigator.clipboard.writeText(roomId);
   };
 
-  if (!roomId) return null;
+  const startGame = () => {
+    if (roomId) {
+      socket.emit('startGame', { roomId });
+    }
+  };
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
+    <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur">
+      {/* Room Code */}
       <div className="mb-4">
         <div className="text-white/70 text-xs">Room Code</div>
         <div className="mt-1 flex items-center justify-between gap-3">
           <span className="text-lg font-semibold tracking-wider">{roomId}</span>
           <button
             onClick={copyRoomId}
-            className="px-3 py-1 rounded-md border border-white/10 bg-white/10 text-xs flex items-center gap-1"
+            className="px-3 py-1 rounded-md border border-white/10 bg-white/10 text-xs flex items-center gap-1 hover:bg-white/20 transition"
           >
             <Copy className="w-3 h-3" />
             Copy
@@ -35,6 +36,7 @@ export default function RoomCard() {
         </div>
       </div>
 
+      {/* Player List */}
       <div className="space-y-2 mb-4">
         {players.map((p) => (
           <div
@@ -42,7 +44,7 @@ export default function RoomCard() {
             className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-white/80"
           >
             <div className="flex items-center gap-3">
-              <div className="grid h-8 w-8 place-items-center rounded-md bg-gradient-to-b from-white/20 to-white/0 border border-white/10">
+              <div className="grid h-8 w-8 place-items-center rounded-md bg-linear-to-b from-white/20 to-white/0 border border-white/10">
                 <Users className="h-4 w-4" />
               </div>
               <div className="flex items-center gap-2">
@@ -60,10 +62,11 @@ export default function RoomCard() {
         ))}
       </div>
 
+      {/* Start Button */}
       {isCreator && players.length >= 2 && !gameStarted && (
         <button
           onClick={startGame}
-          className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:scale-105 transition active:scale-95 shadow-lg"
+          className="w-full py-3 bg-linear-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:scale-105 transition active:scale-95 shadow-lg"
         >
           Start Game
         </button>
