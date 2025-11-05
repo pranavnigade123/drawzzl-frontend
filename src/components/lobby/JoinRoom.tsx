@@ -1,4 +1,3 @@
-// src/components/lobby/JoinRoom.tsx
 'use client';
 
 import { useState } from 'react';
@@ -21,7 +20,7 @@ export default function JoinRoom({ onJoin }: JoinRoomProps) {
 
     setJoining(true);
     onJoin(rid, name);
-    // Simulate async join (socket handles real logic)
+
     setTimeout(() => setJoining(false), 500);
   };
 
