@@ -6,7 +6,6 @@ export const socket: Socket = io(SOCKET_URL, {
   autoConnect: true,
 });
 
-// Make socket globally accessible in browser (for testing)
 if (typeof window !== 'undefined') {
   (window as any).socket = socket;
 }
