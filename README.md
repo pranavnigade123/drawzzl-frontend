@@ -1,10 +1,19 @@
 
 # Drawzzl – Frontend  
 **A real-time multiplayer drawing & guessing game (Skribbl.io clone)**
+WORK IN PROGRESS (stay tuned)
 
-![Drawzzl](https://via.placeholder.com/1200x600.png?text=Drawzzl+Game+Preview)  
 *Create room → Draw → Guess → Celebrate!*
 
+
+---
+
+> **Important Note**  
+> This project is **not affiliated with, endorsed by, or intended to copy Skribbl.io**.  
+> We are **inspired by its gameplay** and built this as a **personal learning project** to showcase full-stack development skills using modern tools like **Next.js, Socket.io, Zustand, and Konva**.  
+> **No harm or competition is intended** — it's a tribute to great game design and a portfolio piece.
+
+---
 ---
 
 ## Features
@@ -128,17 +137,6 @@ This frontend connects to:
 
 > Run backend on `http://localhost:3001`
 
----
-
-## Deployment
-
-### Vercel (Recommended)
-
-```bash
-vercel
-```
-
-Or connect repo → auto-deploy on push.
 
 ---
 
