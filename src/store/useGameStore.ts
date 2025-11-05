@@ -1,20 +1,26 @@
-// src/store/useGameStore.ts
 import { create } from 'zustand';
 import { socket } from '@/lib/socket';
 
-interface Player {
+export interface Player {
   id: string;
   name: string;
   score: number;
   isDrawer?: boolean;
 }
 
-interface GameState {
+export interface ChatItem {
+  id: string;
+  name: string;
+  msg: string;
+}
+
+export interface GameState {
   // Room
   roomId: string | null;
   isCreator: boolean;
   players: Player[];
   gameStarted: boolean;
+  gameEnded: boolean;
 
   // Turn
   currentWord: string | undefined;
@@ -24,39 +30,47 @@ interface GameState {
   maxRounds: number;
 
   // Chat
-  chat: { id: string; name: string; msg: string }[];
+  chat: ChatItem[];
+
+  // UI
+  confetti: boolean;
 
   // Actions
   setRoomId: (id: string | null) => void;
   setIsCreator: (is: boolean) => void;
   setPlayers: (players: Player[]) => void;
   setGameStarted: (started: boolean) => void;
+  setGameEnded: (ended: boolean) => void;
   setCurrentWord: (word: string | undefined) => void;
   setWordHint: (hint: string) => void;
   setTimeLeft: (time: number) => void;
   setRound: (round: number) => void;
   setMaxRounds: (rounds: number) => void;
-  addChat: (item: { id: string; name: string; msg: string }) => void;
+  addChat: (item: ChatItem) => void;
   clearChat: () => void;
+  setConfetti: (show: boolean) => void;
   reset: () => void;
 }
 
-export const useGameStore = create<GameState>((set, get) => ({
+export const useGameStore = create<GameState>((set) => ({
   roomId: null,
   isCreator: false,
   players: [],
   gameStarted: false,
+  gameEnded: false,
   currentWord: undefined,
   wordHint: '',
   timeLeft: 0,
   round: 1,
   maxRounds: 3,
   chat: [],
+  confetti: false,
 
   setRoomId: (id) => set({ roomId: id }),
   setIsCreator: (is) => set({ isCreator: is }),
   setPlayers: (players) => set({ players }),
   setGameStarted: (started) => set({ gameStarted: started }),
+  setGameEnded: (ended) => set({ gameEnded: ended }),
   setCurrentWord: (word) => set({ currentWord: word }),
   setWordHint: (hint) => set({ wordHint: hint }),
   setTimeLeft: (time) => set({ timeLeft: time }),
@@ -64,17 +78,20 @@ export const useGameStore = create<GameState>((set, get) => ({
   setMaxRounds: (rounds) => set({ maxRounds: rounds }),
   addChat: (item) => set((state) => ({ chat: [...state.chat, item] })),
   clearChat: () => set({ chat: [] }),
+  setConfetti: (show) => set({ confetti: show }),
   reset: () =>
     set({
       roomId: null,
       isCreator: false,
       players: [],
       gameStarted: false,
+      gameEnded: false,
       currentWord: undefined,
       wordHint: '',
       timeLeft: 0,
       round: 1,
       maxRounds: 3,
       chat: [],
+      confetti: false,
     }),
 }));
