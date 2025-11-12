@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { LogIn } from 'lucide-react';
+import Button from '@/components/ui/Button';
 
 interface JoinRoomProps {
   onJoin: (roomId: string, name: string) => void;
@@ -20,32 +21,37 @@ export default function JoinRoom({ onJoin }: JoinRoomProps) {
 
     setJoining(true);
     onJoin(rid, name);
-
-    setTimeout(() => setJoining(false), 500);
+    setTimeout(() => setJoining(false), 1000);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm text-white/70 mb-1">Room code</label>
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-white/80">
+            Room Code
+          </label>
           <input
             value={roomId}
             onChange={(e) => setRoomId(e.target.value)}
-            placeholder="e.g., 8NZ3QK"
-            className="w-full rounded-md border border-white/10 bg-white/10 px-3 py-2 outline-none text-white placeholder:text-white/40 focus:border-white/30 transition uppercase"
+            placeholder="ABC123"
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 outline-none text-white placeholder:text-white/40 focus:border-cyan-500/50 focus:bg-white/10 transition-all duration-200 uppercase tracking-wider text-center text-lg font-mono"
             required
             minLength={6}
             maxLength={6}
+            autoFocus
           />
         </div>
-        <div>
-          <label className="block text-sm text-white/70 mb-1">Your name</label>
+
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-white/80">
+            Your Name
+          </label>
           <input
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
-            placeholder="e.g., Kumar"
-            className="w-full rounded-md border border-white/10 bg-white/10 px-3 py-2 outline-none text-white placeholder:text-white/40 focus:border-white/30 transition"
+            placeholder="Enter your name"
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 outline-none text-white placeholder:text-white/40 focus:border-cyan-500/50 focus:bg-white/10 transition-all duration-200"
             required
             minLength={1}
             maxLength={16}
@@ -53,20 +59,17 @@ export default function JoinRoom({ onJoin }: JoinRoomProps) {
         </div>
       </div>
 
-      <button
+      <Button
         type="submit"
-        disabled={joining || !roomId.trim() || !playerName.trim()}
-        className="w-full py-3 rounded-xl bg-linear-to-r from-indigo-500 to-blue-500 text-white font-semibold shadow-lg active:scale-95 transition disabled:opacity-50 flex items-center justify-center gap-2"
+        variant="secondary"
+        size="lg"
+        fullWidth
+        loading={joining}
+        disabled={!roomId.trim() || !playerName.trim()}
       >
-        {joining ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Joining…
-          </>
-        ) : (
-          'Join Room'
-        )}
-      </button>
+        {!joining && <LogIn className="w-5 h-5" />}
+        Join Room
+      </Button>
     </form>
   );
 }

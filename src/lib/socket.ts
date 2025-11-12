@@ -4,6 +4,9 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000'
 
 export const socket: Socket = io(SOCKET_URL, {
   autoConnect: true,
+  reconnection: true,
+  reconnectionDelay: 1000,
+  reconnectionAttempts: 5,
 });
 
 if (typeof window !== 'undefined') {
@@ -34,4 +37,13 @@ socket.on('playerJoined', (data) => {
 
 socket.on('error', (data) => {
   console.error('Server Error:', data.message);
+});
+
+socket.on('connect_error', (error) => {
+  console.error('Connection Error:', error.message);
+  console.error('Make sure backend is running on', SOCKET_URL);
+});
+
+socket.on('reconnect_failed', () => {
+  console.error('Failed to reconnect to backend');
 });

@@ -34,6 +34,7 @@ export interface GameState {
 
   // UI
   confetti: boolean;
+  errorMessage: string | null;
 
   // Actions
   setRoomId: (id: string | null) => void;
@@ -49,6 +50,7 @@ export interface GameState {
   addChat: (item: ChatItem) => void;
   clearChat: () => void;
   setConfetti: (show: boolean) => void;
+  setErrorMessage: (msg: string | null) => void;
   reset: () => void;
 }
 
@@ -65,6 +67,7 @@ export const useGameStore = create<GameState>((set) => ({
   maxRounds: 3,
   chat: [],
   confetti: false,
+  errorMessage: null,
 
   setRoomId: (id) => set({ roomId: id }),
   setIsCreator: (is) => set({ isCreator: is }),
@@ -79,6 +82,7 @@ export const useGameStore = create<GameState>((set) => ({
   addChat: (item) => set((state) => ({ chat: [...state.chat, item] })),
   clearChat: () => set({ chat: [] }),
   setConfetti: (show) => set({ confetti: show }),
+  setErrorMessage: (msg) => set({ errorMessage: msg }),
   reset: () =>
     set({
       roomId: null,
@@ -93,5 +97,6 @@ export const useGameStore = create<GameState>((set) => ({
       maxRounds: 3,
       chat: [],
       confetti: false,
+      errorMessage: null,
     }),
 }));

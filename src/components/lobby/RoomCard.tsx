@@ -2,15 +2,23 @@
 
 import { useGameStore } from '@/store/useGameStore';
 import { socket } from '@/lib/socket';
-import { Copy, Crown, Users } from 'lucide-react';
+import { Copy, Crown, Users, Check, Play } from 'lucide-react';
+import { useState } from 'react';
+import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
 
 export default function RoomCard() {
   const { roomId, players, isCreator, gameStarted } = useGameStore();
+  const [copied, setCopied] = useState(false);
 
   if (!roomId) return null;
 
   const copyRoomId = () => {
-    if (roomId) navigator.clipboard.writeText(roomId);
+    if (roomId) {
+      navigator.clipboard.writeText(roomId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const startGame = () => {
@@ -20,57 +28,113 @@ export default function RoomCard() {
   };
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] backdrop-blur">
+    <Card>
       {/* Room Code */}
-      <div className="mb-4">
-        <div className="text-white/70 text-xs">Room Code</div>
-        <div className="mt-1 flex items-center justify-between gap-3">
-          <span className="text-lg font-semibold tracking-wider">{roomId}</span>
+      <div className="mb-6">
+        <div className="text-white/60 text-xs font-medium uppercase tracking-wider mb-2">
+          Room Code
+        </div>
+        <div className="flex items-center justify-between gap-3 bg-black/20 rounded-xl p-4 border border-white/10">
+          <span className="text-2xl font-bold tracking-widest font-mono text-purple-400">
+            {roomId}
+          </span>
           <button
             onClick={copyRoomId}
-            className="px-3 py-1 rounded-md border border-white/10 bg-white/10 text-xs flex items-center gap-1 hover:bg-white/20 transition"
+            className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-medium flex items-center gap-2 transition-all duration-200 active:scale-95"
           >
-            <Copy className="w-3 h-3" />
-            Copy
+            {copied ? (
+              <>
+                <Check className="w-4 h-4 text-green-400" />
+                <span className="text-green-400">Copied!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-4 h-4" />
+                Copy
+              </>
+            )}
           </button>
         </div>
       </div>
 
       {/* Player List */}
-      <div className="space-y-2 mb-4">
-        {players.map((p) => (
-          <div
-            key={p.id}
-            className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-white/80"
-          >
-            <div className="flex items-center gap-3">
-              <div className="grid h-8 w-8 place-items-center rounded-md bg-linear-to-b from-white/20 to-white/0 border border-white/10">
-                <Users className="h-4 w-4" />
+      <div className="mb-6">
+        <div className="text-white/60 text-xs font-medium uppercase tracking-wider mb-3">
+          Players ({players.length}/8)
+        </div>
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {players.map((p, index) => (
+            <div
+              key={p.id}
+              className="flex items-center justify-between rounded-xl border border-white/10 bg-gradient-to-r from-white/5 to-transparent px-4 py-3 text-white/90 animate-slide-in"
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-white/10">
+                  <Users className="h-5 w-5 text-purple-300" />
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{p.name}</span>
+                    {p.isDrawer && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-400/30 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-200">
+                        <Crown className="h-3 w-3" />
+                        Drawing
+                      </span>
+                    )}
+                  </div>
+                  {gameStarted && (
+                    <span className="text-xs text-white/50">
+                      {p.score} points
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{p.name}</span>
-                {p.isDrawer && (
-                  <span className="inline-flex items-center gap-1 rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-100">
-                    <Crown className="h-3 w-3" />
-                    Drawer
-                  </span>
-                )}
-              </div>
+              {!gameStarted && (
+                <span className="text-sm font-semibold text-white/40">
+                  Ready
+                </span>
+              )}
+              {gameStarted && (
+                <span className="text-lg font-bold text-purple-400">
+                  {p.score}
+                </span>
+              )}
             </div>
-            <span className="text-sm text-white/60">Score {p.score}</span>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Start Button */}
       {isCreator && players.length >= 2 && !gameStarted && (
-        <button
+        <Button
           onClick={startGame}
-          className="w-full py-3 bg-linear-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:scale-105 transition active:scale-95 shadow-lg"
+          variant="success"
+          size="lg"
+          fullWidth
         >
+          <Play className="w-5 h-5" />
           Start Game
-        </button>
+        </Button>
       )}
-    </section>
+
+      {/* Waiting Message */}
+      {!isCreator && !gameStarted && (
+        <div className="text-center py-3 px-4 rounded-xl bg-white/5 border border-white/10">
+          <p className="text-sm text-white/60">
+            Waiting for host to start the game...
+          </p>
+        </div>
+      )}
+
+      {/* Need More Players */}
+      {isCreator && players.length < 2 && !gameStarted && (
+        <div className="text-center py-3 px-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+          <p className="text-sm text-amber-200">
+            Need at least 2 players to start
+          </p>
+        </div>
+      )}
+    </Card>
   );
 }
