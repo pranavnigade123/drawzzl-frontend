@@ -11,6 +11,7 @@ import WordHint from '@/components/game/WordHint';
 import ConfettiEffect from '@/components/game/ConfettiEffect';
 import FinalLeaderboard from '@/components/game/FinalLeaderboard';
 import ErrorToast from '@/components/ui/ErrorToast';
+import WordSelection from '@/components/game/WordSelection';
 import { useGameStore } from '@/store/useGameStore';
 import { socket } from '@/lib/socket';
 
@@ -33,7 +34,11 @@ export default function LobbyContainer() {
     addChat,
     setConfetti,
     setGameEnded,
-    setErrorMessage
+    setErrorMessage,
+    wordChoices,
+    showWordSelection,
+    setWordChoices,
+    setShowWordSelection
   } = useGameStore();
 
   const me = players.find(p => p.id === socket.id);
@@ -74,8 +79,11 @@ export default function LobbyContainer() {
       yourWord: ({ word }: { word: string }) => {
         setCurrentWord(word);
       },
-      tick: ({ timeLeft }: { timeLeft: number }) => {
+      tick: ({ timeLeft, wordHint }: { timeLeft: number; wordHint?: string }) => {
         setTimeLeft(timeLeft);
+        if (wordHint) {
+          setWordHint(wordHint);
+        }
       },
       correctGuess: (p: any) => {
         addChat({ id: p.playerId, name: p.name, msg: `guessed it! (+${p.points})` });
@@ -118,6 +126,10 @@ export default function LobbyContainer() {
       },
       error: (data: { message: string }) => {
         setErrorMessage(data.message);
+      },
+      chooseWord: (data: { words: string[]; timeLimit: number }) => {
+        setWordChoices(data.words);
+        setShowWordSelection(true);
       },
     };
 
@@ -210,6 +222,16 @@ export default function LobbyContainer() {
       <ConfettiEffect />
       <FinalLeaderboard />
       <ErrorToast />
+      
+      {/* Word Selection Modal */}
+      {showWordSelection && wordChoices.length > 0 && roomId && (
+        <WordSelection
+          words={wordChoices}
+          timeLimit={10}
+          roomId={roomId}
+          onSelect={() => setShowWordSelection(false)}
+        />
+      )}
     </div>
   );
 }

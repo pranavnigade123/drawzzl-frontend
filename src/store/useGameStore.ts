@@ -35,6 +35,10 @@ export interface GameState {
   // UI
   confetti: boolean;
   errorMessage: string | null;
+  
+  // Word Selection
+  wordChoices: string[];
+  showWordSelection: boolean;
 
   // Actions
   setRoomId: (id: string | null) => void;
@@ -51,6 +55,8 @@ export interface GameState {
   clearChat: () => void;
   setConfetti: (show: boolean) => void;
   setErrorMessage: (msg: string | null) => void;
+  setWordChoices: (words: string[]) => void;
+  setShowWordSelection: (show: boolean) => void;
   reset: () => void;
 }
 
@@ -68,6 +74,8 @@ export const useGameStore = create<GameState>((set) => ({
   chat: [],
   confetti: false,
   errorMessage: null,
+  wordChoices: [],
+  showWordSelection: false,
 
   setRoomId: (id) => set({ roomId: id }),
   setIsCreator: (is) => set({ isCreator: is }),
@@ -83,6 +91,8 @@ export const useGameStore = create<GameState>((set) => ({
   clearChat: () => set({ chat: [] }),
   setConfetti: (show) => set({ confetti: show }),
   setErrorMessage: (msg) => set({ errorMessage: msg }),
+  setWordChoices: (words) => set({ wordChoices: words }),
+  setShowWordSelection: (show) => set({ showWordSelection: show }),
   reset: () =>
     set({
       roomId: null,
@@ -98,5 +108,7 @@ export const useGameStore = create<GameState>((set) => ({
       chat: [],
       confetti: false,
       errorMessage: null,
+      wordChoices: [],
+      showWordSelection: false,
     }),
 }));
