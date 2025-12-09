@@ -19,20 +19,3 @@ socket.on('connect', () => {
 socket.on('disconnect', () => {
   console.log('Disconnected from backend');
 });
-
-// ROOM EVENTS
-socket.on('roomCreated', (data) => {
-  console.log('Room Created!', data);
-});
-
-socket.on('roomJoined', (data) => {
-  console.log('Room Joined!', data);
-});
-
-socket.on('playerJoined', (data) => {
-  console.log('Player Joined!', data);
-});
-
-socket.on('error', (data) => {
-  console.error('Server Error:', data.message);
-});

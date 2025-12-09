@@ -72,25 +72,29 @@ export default function Canvas({ roomId, isDrawer, currentWord }: CanvasProps) {
   const stageRef = useRef<any>(null);
 
   return (
-    <div className="bg-white rounded-2xl shadow-2xl p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-bold">Canvas</h3>
+    <div className="bg-white rounded-2xl shadow-2xl p-3 md:p-4">
+      <div className="mb-3 md:mb-4 flex items-center justify-between">
+        <h3 className="text-base md:text-lg font-bold">Canvas</h3>
         {isDrawer && currentWord && (
-          <div className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-lg text-sm font-medium">
+          <div className="bg-yellow-100 text-yellow-800 px-2 md:px-3 py-1 rounded-lg text-xs md:text-sm font-medium">
             Draw: <span className="underline">{currentWord}</span>
           </div>
         )}
       </div>
 
-      <Stage
-        width={600}
-        height={400}
-        onMouseDown={handleMouseDown}
-        onMousemove={handleMouseMove}
-        onMouseup={handleMouseUp}
-        className="border-2 border-gray-300 rounded-lg"
-        ref={stageRef}
-      >
+      <div className="overflow-x-auto">
+        <Stage
+          width={Math.min(600, window.innerWidth - 80)}
+          height={Math.min(400, window.innerHeight * 0.4)}
+          onMouseDown={handleMouseDown}
+          onMousemove={handleMouseMove}
+          onMouseup={handleMouseUp}
+          onTouchStart={handleMouseDown}
+          onTouchMove={handleMouseMove}
+          onTouchEnd={handleMouseUp}
+          className="border-2 border-gray-300 rounded-lg mx-auto"
+          ref={stageRef}
+        >
         <Layer>
           {lines.map((line, i) => (
             <Line
@@ -106,22 +110,24 @@ export default function Canvas({ roomId, isDrawer, currentWord }: CanvasProps) {
         </Layer>
       </Stage>
 
+      </div>
+
       {isDrawer && (
-        <div className="mt-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <button onClick={() => setTool('brush')} className={`p-2 rounded-lg ${tool === 'brush' ? 'bg-purple-600 text-white' : 'bg-gray-200'}`}>
-              <Brush className="w-5 h-5" />
+        <div className="mt-3 md:mt-4 space-y-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={() => setTool('brush')} className={`p-2 rounded-lg transition-all hover:scale-105 ${tool === 'brush' ? 'bg-purple-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}>
+              <Brush className="w-4 h-4 md:w-5 md:h-5" />
             </button>
-            <button onClick={() => setTool('eraser')} className={`p-2 rounded-lg ${tool === 'eraser' ? 'bg-purple-600 text-white' : 'bg-gray-200'}`}>
-              <Eraser className="w-5 h-5" />
+            <button onClick={() => setTool('eraser')} className={`p-2 rounded-lg transition-all hover:scale-105 ${tool === 'eraser' ? 'bg-purple-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}>
+              <Eraser className="w-4 h-4 md:w-5 md:h-5" />
             </button>
-            <button onClick={clearCanvas} className="ml-auto px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+            <button onClick={clearCanvas} className="ml-auto px-3 md:px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 hover:scale-105 transition-all text-sm md:text-base">
               Clear
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Palette className="w-5 h-5 text-gray-600" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <Palette className="w-4 h-4 md:w-5 md:h-5 text-gray-600" />
             {colors.map((c) => (
               <button
                 key={c}
@@ -129,7 +135,7 @@ export default function Canvas({ roomId, isDrawer, currentWord }: CanvasProps) {
                   setTool('brush');
                   setColor(c);
                 }}
-                className={`w-8 h-8 rounded-full border-2 ${color === c ? 'border-purple-600' : 'border-gray-300'}`}
+                className={`w-6 h-6 md:w-8 md:h-8 rounded-full border-2 transition-transform ${color === c ? 'border-purple-600 scale-110' : 'border-gray-300'}`}
                 style={{ backgroundColor: c }}
               />
             ))}
