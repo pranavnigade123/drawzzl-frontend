@@ -36,6 +36,7 @@ function Lobby() {
   const [roomId, setRoomId] = useState('');
   const [players, setPlayers] = useState<Player[]>([]);
   const [isCreator, setIsCreator] = useState(false);
+  const [sessionId, setSessionId] = useState<string>('');
 
   // game state
   const [gameStarted, setGameStarted] = useState(false);
@@ -94,24 +95,68 @@ function Lobby() {
     [players]
   );
 
-  // Check if current user is creator (first player)
-  const amICreator = useMemo(
-    () => players.length > 0 && players[0]?.id === socket.id,
-    [players]
-  );
+  // Use isCreator from backend (tracks original room owner)
+  // This is set by roomCreated/roomJoined/hostTransferred events
 
   useEffect(() => {
     setMounted(true);
 
+    // Try to reconnect if we have stored session
+    const storedRoomId = localStorage.getItem('drawzzl_roomId');
+    const storedSessionId = localStorage.getItem('drawzzl_sessionId');
+    
+    if (storedRoomId && storedSessionId && socket.connected) {
+      console.log('Attempting to reconnect to room:', storedRoomId);
+      socket.emit('reconnectRoom', { roomId: storedRoomId, sessionId: storedSessionId });
+    }
+
     // ----- handlers from server -----
-    const onRoomCreated = (data: { roomId: string; playerId: string }) => {
+    const onRoomCreated = (data: { roomId: string; playerId: string; isHost?: boolean; sessionId?: string }) => {
       setRoomId(data.roomId);
-      setIsCreator(true);
+      setIsCreator(data.isHost ?? true);
+      if (data.sessionId) {
+        setSessionId(data.sessionId);
+        // Store session info
+        localStorage.setItem('drawzzl_roomId', data.roomId);
+        localStorage.setItem('drawzzl_sessionId', data.sessionId);
+      }
     };
 
-    const onRoomJoined = (data: { roomId: string }) => {
+    const onRoomJoined = (data: { roomId: string; isHost?: boolean; sessionId?: string }) => {
       setRoomId(data.roomId);
-      setIsCreator(false);
+      setIsCreator(data.isHost ?? false);
+      if (data.sessionId) {
+        setSessionId(data.sessionId);
+        // Store session info
+        localStorage.setItem('drawzzl_roomId', data.roomId);
+        localStorage.setItem('drawzzl_sessionId', data.sessionId);
+      }
+    };
+
+    const onReconnected = (data: { 
+      roomId: string; 
+      isHost: boolean;
+      playerData: Player;
+      gameState: { gameStarted: boolean; round: number; maxRounds: number };
+    }) => {
+      setRoomId(data.roomId);
+      setIsCreator(data.isHost);
+      setGameStarted(data.gameState.gameStarted);
+      setRound(data.gameState.round);
+      setMaxRounds(data.gameState.maxRounds);
+      setChat((c) => [
+        ...c,
+        { id: 'system', name: 'System', msg: 'Reconnected successfully!' },
+      ]);
+      console.log('Reconnected to room:', data.roomId);
+    };
+
+    const onHostTransferred = (data: { isHost: boolean }) => {
+      setIsCreator(data.isHost);
+      setChat((c) => [
+        ...c,
+        { id: 'system', name: 'System', msg: 'You are now the host!' },
+      ]);
     };
 
     const onPlayerJoined = (data: { players: Player[] }) => {
@@ -272,6 +317,8 @@ function Lobby() {
     // subscribe
     socket.on('roomCreated', onRoomCreated);
     socket.on('roomJoined', onRoomJoined);
+    socket.on('reconnected', onReconnected);
+    socket.on('hostTransferred', onHostTransferred);
     socket.on('playerJoined', onPlayerJoined);
     socket.on('gameStarted', onGameStarted);
     socket.on('yourWord', onYourWord);
@@ -290,6 +337,8 @@ function Lobby() {
     return () => {
       socket.off('roomCreated', onRoomCreated);
       socket.off('roomJoined', onRoomJoined);
+      socket.off('reconnected', onReconnected);
+      socket.off('hostTransferred', onHostTransferred);
       socket.off('playerJoined', onPlayerJoined);
       socket.off('gameStarted', onGameStarted);
       socket.off('yourWord', onYourWord);
@@ -372,15 +421,27 @@ function Lobby() {
   };
 
   const handleQuit = () => {
-    // Emit leave event and disconnect
+    // Clear session storage (prevent reconnect)
+    localStorage.removeItem('drawzzl_roomId');
+    localStorage.removeItem('drawzzl_sessionId');
+    
+    // Emit leave event with acknowledgment callback
     if (roomId) {
-      socket.emit('leaveRoom', { roomId });
-    }
-    socket.disconnect();
-    // Reload to go back to landing page
-    setTimeout(() => {
+      socket.emit('leaveRoom', { roomId }, (response: any) => {
+        // Wait for backend confirmation before disconnecting
+        socket.disconnect();
+        window.location.reload();
+      });
+      
+      // Fallback timeout in case callback doesn't fire
+      setTimeout(() => {
+        socket.disconnect();
+        window.location.reload();
+      }, 500);
+    } else {
+      socket.disconnect();
       window.location.reload();
-    }, 100);
+    }
   };
 
   const handleCopyCode = () => {
@@ -522,7 +583,7 @@ function Lobby() {
                 ))}
               </div>
 
-              {amICreator && (
+              {isCreator && (
                 <>
                   <button
                     onClick={() => setShowSettings(true)}
