@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Settings, Clock, Hash, BookOpen, Percent, X } from 'lucide-react';
+import { Settings, Clock, Hash, BookOpen, Percent, X, Users } from 'lucide-react';
 
 export interface GameSettingsData {
   rounds: number;
@@ -9,6 +9,7 @@ export interface GameSettingsData {
   wordCount: number;
   customWords: string;
   customWordProbability: number;
+  maxPlayers: number;
 }
 
 interface GameSettingsProps {
@@ -24,6 +25,7 @@ const DEFAULT_SETTINGS: GameSettingsData = {
   wordCount: 3,
   customWords: '',
   customWordProbability: 0,
+  maxPlayers: 8,
 };
 
 export default function GameSettings({ isOpen, onClose, onSave, initialSettings }: GameSettingsProps) {
@@ -60,6 +62,30 @@ export default function GameSettings({ isOpen, onClose, onSave, initialSettings 
 
         {/* Settings Form */}
         <div className="space-y-6">
+          {/* Max Players */}
+          <div>
+            <label className="flex items-center gap-2 text-sm text-white/70 mb-2">
+              <Users className="w-4 h-4" />
+              Maximum Players
+            </label>
+            <div className="flex items-center gap-4">
+              <input
+                type="range"
+                min="2"
+                max="15"
+                value={settings.maxPlayers}
+                onChange={(e) => updateSetting('maxPlayers', parseInt(e.target.value))}
+                className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-purple-500"
+              />
+              <span className="text-white font-semibold w-12 text-center bg-white/10 rounded-lg px-3 py-1">
+                {settings.maxPlayers}
+              </span>
+            </div>
+            <p className="text-xs text-white/50 mt-1">
+              Maximum number of players allowed in the room
+            </p>
+          </div>
+
           {/* Rounds */}
           <div>
             <label className="flex items-center gap-2 text-sm text-white/70 mb-2">

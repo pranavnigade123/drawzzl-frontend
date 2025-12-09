@@ -64,6 +64,7 @@ function Lobby() {
     wordCount: 3,
     customWords: '',
     customWordProbability: 0,
+    maxPlayers: 8,
   });
 
   // word selection
@@ -244,6 +245,7 @@ function Lobby() {
         wordCount: settings.wordCount,
         customWords: settings.customWords,
         customWordProbability: settings.customWordProbability,
+        maxPlayers: settings.maxPlayers,
       });
       setChat((c) => [
         ...c,

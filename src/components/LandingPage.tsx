@@ -61,33 +61,16 @@ export default function LandingPage({ onJoin, onCreateRoom }: LandingPageProps) 
       </div>
 
       <main className="relative z-10 max-w-6xl mx-auto px-4 py-6 md:py-10">
-        {/* Header with Logo and Title */}
-        <div className="flex items-start justify-between mb-8 md:mb-12 animate-fadeIn">
-          {/* Left: Drawzzl Title */}
-          <div className="flex items-center gap-2 md:gap-3">
-            <Paintbrush className="w-8 h-8 md:w-12 md:h-12 text-fuchsia-400" />
-            <div>
-              <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-fuchsia-400 via-cyan-400 to-indigo-400 bg-clip-text text-transparent">
-                Drawzzl
-              </h1>
-              <p className="text-xs md:text-sm text-white/60 mt-1">Real-time drawing & guessing</p>
-            </div>
+        {/* Hero Section - Centered */}
+        <div className="text-center mb-8 md:mb-12 pt-4 animate-fadeIn">
+          <div className="inline-flex items-center gap-2 md:gap-3 mb-4">
+            <Paintbrush className="w-10 h-10 md:w-16 md:h-16 text-fuchsia-400" />
+            <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-fuchsia-400 via-cyan-400 to-indigo-400 bg-clip-text text-transparent">
+              Drawzzl
+            </h1>
           </div>
-          
-          {/* Right: Parent Company Logo */}
-          <div className="flex items-center">
-            <img 
-              src="/logo dark bg.png" 
-              alt="Company Logo" 
-              className="h-10 md:h-14 w-auto opacity-90 hover:opacity-100 transition-opacity"
-            />
-          </div>
-        </div>
-
-        {/* Hero Section */}
-        <div className="text-center mb-8 md:mb-12">
-          <p className="text-lg md:text-xl text-white/70 mb-6 md:mb-8">
-            Draw, guess, and compete in real-time!
+          <p className="text-lg md:text-2xl text-white/80 mb-6 md:mb-8 font-medium">
+            Paint Your Way to Glory
           </p>
 
           {/* Features */}
