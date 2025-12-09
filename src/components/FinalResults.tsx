@@ -45,16 +45,16 @@ export default function FinalResults({ players, onReturnToLobby, onQuit }: Final
   };
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 z-50 overflow-hidden">
+    <div className="fixed inset-0 bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 z-50 overflow-y-auto overflow-x-hidden">
       {/* Animated Background */}
-      <div className="absolute inset-0 opacity-20">
+      <div className="fixed inset-0 opacity-20 pointer-events-none">
         <div className="absolute top-0 left-0 w-96 h-96 bg-fuchsia-500 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-cyan-500 rounded-full blur-3xl" />
         <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-indigo-500 rounded-full blur-3xl" />
       </div>
 
       {/* Floating Avatars - Limited to top 6 players for performance */}
-      <div className="absolute inset-0 pointer-events-none">
+      <div className="fixed inset-0 pointer-events-none">
         {players.slice(0, 6).map((player, idx) => {
           const style = getFloatingStyle(idx);
           return (
@@ -74,7 +74,7 @@ export default function FinalResults({ players, onReturnToLobby, onQuit }: Final
 
       {/* Confetti Effect - Reduced count for performance */}
       {showConfetti && (
-        <div className="absolute inset-0 pointer-events-none">
+        <div className="fixed inset-0 pointer-events-none">
           {Array.from({ length: 30 }).map((_, i) => (
             <div
               key={i}
@@ -92,7 +92,7 @@ export default function FinalResults({ players, onReturnToLobby, onQuit }: Final
       )}
 
       {/* Main Content */}
-      <div className="relative z-10 flex items-center justify-center min-h-screen p-4 md:p-8">
+      <div className="relative z-10 flex items-center justify-center min-h-screen p-4 md:p-8 py-8">
         <div className="max-w-4xl w-full">
           {/* Header */}
           <div className="text-center mb-8 md:mb-12 animate-slideInUp">
