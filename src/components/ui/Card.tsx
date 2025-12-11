@@ -8,14 +8,14 @@ interface CardProps {
 
 export default function Card({ children, className = '', variant = 'default' }: CardProps) {
   const variants = {
-    default: 'bg-white/5 backdrop-blur-sm',
-    glass: 'bg-white/10 backdrop-blur-md',
-    bordered: 'bg-white/5 border-2 border-white/20',
+    default: 'bg-[#1a1a1a]',
+    glass: 'bg-[#1a1a1a]/80 backdrop-blur-sm',
+    bordered: 'bg-[#1a1a1a] border-2 border-white/10',
   };
 
   return (
     <div
-      className={`rounded-2xl border border-white/10 p-6 shadow-xl ${variants[variant]} ${className} animate-fade-in`}
+      className={`rounded-lg border border-white/10 p-6 shadow-2xl ${variants[variant]} ${className} animate-fade-in`}
     >
       {children}
     </div>

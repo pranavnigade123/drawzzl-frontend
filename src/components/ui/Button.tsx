@@ -23,19 +23,19 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100';
+      'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100';
 
     const variants = {
       primary:
-        'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white shadow-lg shadow-purple-500/30',
+        'bg-white hover:bg-gray-200 text-black shadow-lg shadow-white/10 border border-white/20',
       secondary:
-        'bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white shadow-lg shadow-cyan-500/30',
+        'bg-gray-800 hover:bg-gray-700 text-white shadow-lg border border-gray-700',
       success:
-        'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-500/30',
+        'bg-green-600 hover:bg-green-500 text-white shadow-lg border border-green-500/50',
       danger:
-        'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white shadow-lg shadow-red-500/30',
+        'bg-red-600 hover:bg-red-500 text-white shadow-lg border border-red-500/50',
       ghost:
-        'bg-white/5 hover:bg-white/10 border border-white/10 text-white',
+        'bg-transparent hover:bg-white/5 border border-white/20 text-white',
     };
 
     const sizes = {

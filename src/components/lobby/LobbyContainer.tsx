@@ -79,10 +79,21 @@ export default function LobbyContainer() {
       yourWord: ({ word }: { word: string }) => {
         setCurrentWord(word);
       },
-      tick: ({ timeLeft, wordHint }: { timeLeft: number; wordHint?: string }) => {
+      tick: ({ timeLeft, wordHint, wrongGuesses, maxWrongGuesses }: { 
+        timeLeft: number; 
+        wordHint?: string;
+        wrongGuesses?: number;
+        maxWrongGuesses?: number;
+      }) => {
         setTimeLeft(timeLeft);
         if (wordHint) {
           setWordHint(wordHint);
+        }
+        if (typeof wrongGuesses === 'number') {
+          useGameStore.getState().setWrongGuesses(wrongGuesses);
+        }
+        if (typeof maxWrongGuesses === 'number') {
+          useGameStore.getState().setMaxWrongGuesses(maxWrongGuesses);
         }
       },
       correctGuess: (p: any) => {
@@ -154,28 +165,30 @@ export default function LobbyContainer() {
     setErrorMessage
   ]);
 
-  if (!roomId) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-purple-950/20 to-zinc-950 text-white flex items-center justify-center p-4">
-        <div className="max-w-2xl w-full">
-          <header className="text-center mb-12 animate-fade-in">
-            <div className="inline-block mb-4 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/30">
-              <span className="text-sm font-semibold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
-                Real-time Multiplayer
-              </span>
-            </div>
-            <h1 className="text-6xl font-black mb-3 bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
-              Drawzzl
-            </h1>
-            <p className="text-white/60 text-lg">
-              Draw, guess, and have fun with friends!
-            </p>
-          </header>
-          {mounted && <ClientOnlyLobby />}
-        </div>
+if (!roomId) {
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
+      <div className="max-w-2xl w-full">
+        <header className="text-center mb-10 animate-fade-in">
+          <div className="inline-flex items-center gap-2 mb-4 px-4 py-1.5 rounded-full bg-slate-900 border border-slate-700">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs font-semibold text-slate-300 tracking-wide">
+              Online party drawing game
+            </span>
+          </div>
+          <h1 className="text-5xl font-black mb-3 text-slate-50 tracking-tight">
+            Drawzzl
+          </h1>
+          <p className="text-slate-400 text-sm">
+            Create a room, invite friends, draw fast, guess faster.
+          </p>
+        </header>
+        {mounted && <ClientOnlyLobby />}
       </div>
-    );
-  }
+    </div>
+  );
+}
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-purple-950/10 to-zinc-950 text-white p-4">

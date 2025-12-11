@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Sparkles } from 'lucide-react';
 import { socket } from '@/lib/socket';
@@ -22,15 +22,17 @@ export default function WordSelection({
   const [timeLeft, setTimeLeft] = useState(timeLimit);
   const [selected, setSelected] = useState<string | null>(null);
 
+  const handleSelect = useCallback((word: string) => {
+    if (selected) return; // Already selected
+    setSelected(word);
+    socket.emit('selectWord', { roomId, word });
+    onSelect(word);
+  }, [selected, roomId, onSelect]);
+
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          clearInterval(timer);
-          // Auto-select first word if time runs out
-          if (!selected) {
-            handleSelect(words[0]);
-          }
           return 0;
         }
         return prev - 1;
@@ -38,14 +40,14 @@ export default function WordSelection({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [words, selected]);
+  }, []);
 
-  const handleSelect = (word: string) => {
-    if (selected) return; // Already selected
-    setSelected(word);
-    socket.emit('selectWord', { roomId, word });
-    onSelect(word);
-  };
+  // Separate effect to handle auto-selection when time runs out
+  useEffect(() => {
+    if (timeLeft === 0 && !selected && words.length > 0) {
+      handleSelect(words[0]);
+    }
+  }, [timeLeft, selected, words, handleSelect]);
 
   return (
     <AnimatePresence>

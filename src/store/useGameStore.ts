@@ -28,6 +28,10 @@ export interface GameState {
   timeLeft: number;
   round: number;
   maxRounds: number;
+  
+  // Hangman
+  wrongGuesses: number;
+  maxWrongGuesses: number;
 
   // Chat
   chat: ChatItem[];
@@ -51,6 +55,8 @@ export interface GameState {
   setTimeLeft: (time: number) => void;
   setRound: (round: number) => void;
   setMaxRounds: (rounds: number) => void;
+  setWrongGuesses: (count: number) => void;
+  setMaxWrongGuesses: (count: number) => void;
   addChat: (item: ChatItem) => void;
   clearChat: () => void;
   setConfetti: (show: boolean) => void;
@@ -71,6 +77,8 @@ export const useGameStore = create<GameState>((set) => ({
   timeLeft: 0,
   round: 1,
   maxRounds: 3,
+  wrongGuesses: 0,
+  maxWrongGuesses: 6,
   chat: [],
   confetti: false,
   errorMessage: null,
@@ -87,6 +95,8 @@ export const useGameStore = create<GameState>((set) => ({
   setTimeLeft: (time) => set({ timeLeft: time }),
   setRound: (round) => set({ round }),
   setMaxRounds: (rounds) => set({ maxRounds: rounds }),
+  setWrongGuesses: (count) => set({ wrongGuesses: count }),
+  setMaxWrongGuesses: (count) => set({ maxWrongGuesses: count }),
   addChat: (item) => set((state) => ({ chat: [...state.chat, item] })),
   clearChat: () => set({ chat: [] }),
   setConfetti: (show) => set({ confetti: show }),
@@ -105,6 +115,8 @@ export const useGameStore = create<GameState>((set) => ({
       timeLeft: 0,
       round: 1,
       maxRounds: 3,
+      wrongGuesses: 0,
+      maxWrongGuesses: 6,
       chat: [],
       confetti: false,
       errorMessage: null,
