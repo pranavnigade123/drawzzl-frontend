@@ -35,8 +35,34 @@ export default function Canvas({ roomId, isDrawer, currentWord }: CanvasProps) {
     };
   }, []);
 
-  const handleMouseDown = () => {
+  // Prevent scrolling when drawing
+  useEffect(() => {
+    const preventScroll = (e: TouchEvent) => {
+      if (isDrawing.current && isDrawer) {
+        e.preventDefault();
+      }
+    };
+
+    // Add touch event listeners to prevent scrolling during drawing
+    document.addEventListener('touchstart', preventScroll, { passive: false });
+    document.addEventListener('touchmove', preventScroll, { passive: false });
+    document.addEventListener('touchend', preventScroll, { passive: false });
+
+    return () => {
+      document.removeEventListener('touchstart', preventScroll);
+      document.removeEventListener('touchmove', preventScroll);
+      document.removeEventListener('touchend', preventScroll);
+    };
+  }, [isDrawer]);
+
+  const handleMouseDown = (e: any) => {
     if (!isDrawer) return;
+    
+    // Prevent default touch behavior to stop scrolling
+    if (e.evt) {
+      e.evt.preventDefault();
+    }
+    
     isDrawing.current = true;
     const point = stageRef.current?.getPointerPosition();
     if (point) {
@@ -44,8 +70,14 @@ export default function Canvas({ roomId, isDrawer, currentWord }: CanvasProps) {
     }
   };
 
-  const handleMouseMove = () => {
+  const handleMouseMove = (e: any) => {
     if (!isDrawing.current || !isDrawer) return;
+    
+    // Prevent default touch behavior to stop scrolling
+    if (e.evt) {
+      e.evt.preventDefault();
+    }
+    
     const stage = stageRef.current;
     if (!stage) return;
     const point = stage.getPointerPosition();
@@ -60,7 +92,12 @@ export default function Canvas({ roomId, isDrawer, currentWord }: CanvasProps) {
     socket.emit('draw', { roomId, lines });
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: any) => {
+    // Prevent default touch behavior
+    if (e.evt) {
+      e.evt.preventDefault();
+    }
+    
     isDrawing.current = false;
   };
 
@@ -82,7 +119,15 @@ export default function Canvas({ roomId, isDrawer, currentWord }: CanvasProps) {
         )}
       </div>
 
-      <div className="overflow-x-auto">
+      <div 
+        className="overflow-x-auto"
+        style={{ 
+          touchAction: 'none', // Prevent all touch gestures
+          WebkitTouchCallout: 'none', // Prevent callout on iOS
+          WebkitUserSelect: 'none', // Prevent text selection
+          userSelect: 'none'
+        }}
+      >
         <Stage
           width={Math.min(600, window.innerWidth - 80)}
           height={Math.min(400, window.innerHeight * 0.4)}

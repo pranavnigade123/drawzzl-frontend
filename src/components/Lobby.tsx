@@ -89,6 +89,10 @@ function Lobby() {
   // copy animation
   const [copied, setCopied] = useState(false);
 
+  // connection state
+  const [connected, setConnected] = useState(socket.connected);
+  const [reconnecting, setReconnecting] = useState(false);
+
   // derived
   const me = useMemo(
     () => players.find((p) => p.id === socket.id),
@@ -160,6 +164,7 @@ function Lobby() {
     };
 
     const onPlayerJoined = (data: { players: Player[] }) => {
+      console.log('Players updated:', data.players?.length || 0, 'players');
       setPlayers(data.players || []);
     };
 
@@ -334,6 +339,33 @@ function Lobby() {
     socket.on('drawerSelecting', onDrawerSelecting);
     socket.on('error', onError);
 
+    // Connection status handlers
+    const onConnect = () => {
+      console.log('Socket connected:', socket.id);
+      setConnected(true);
+      setReconnecting(false);
+    };
+
+    const onDisconnect = () => {
+      console.log('Socket disconnected');
+      setConnected(false);
+    };
+
+    const onReconnecting = () => {
+      console.log('Socket reconnecting...');
+      setReconnecting(true);
+    };
+
+    const onReconnectError = () => {
+      console.log('Socket reconnection failed');
+      setReconnecting(false);
+    };
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('reconnecting', onReconnecting);
+    socket.on('reconnect_error', onReconnectError);
+
     return () => {
       socket.off('roomCreated', onRoomCreated);
       socket.off('roomJoined', onRoomJoined);
@@ -353,6 +385,10 @@ function Lobby() {
       socket.off('selectWord', onSelectWord);
       socket.off('drawerSelecting', onDrawerSelecting);
       socket.off('error', onError);
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('reconnecting', onReconnecting);
+      socket.off('reconnect_error', onReconnectError);
     };
   }, []);
 
@@ -374,7 +410,23 @@ function Lobby() {
     
     setCreating(true);
     socket.emit('createRoom', { playerName, avatar });
-    setTimeout(() => setCreating(false), 300);
+    
+    // Add timeout for error handling
+    const timeout = setTimeout(() => {
+      if (creating && !roomId) {
+        setCreating(false);
+        setChat((c) => [
+          ...c,
+          { id: 'error', name: 'Error', msg: 'Failed to create room. Please try again.' },
+        ]);
+      }
+    }, 10000);
+    
+    // Clear timeout when room is created
+    if (roomId) {
+      clearTimeout(timeout);
+      setCreating(false);
+    }
   };
 
   const handleJoinRoom = (playerName: string, avatar: number[], roomCode: string) => {
@@ -389,7 +441,23 @@ function Lobby() {
     
     setJoining(true);
     socket.emit('joinRoom', { roomId: roomCode, playerName, avatar });
-    setTimeout(() => setJoining(false), 300);
+    
+    // Add timeout for error handling
+    const timeout = setTimeout(() => {
+      if (joining && !roomId) {
+        setJoining(false);
+        setChat((c) => [
+          ...c,
+          { id: 'error', name: 'Error', msg: 'Failed to join room. Please check the code and try again.' },
+        ]);
+      }
+    }, 10000);
+    
+    // Clear timeout when room is joined
+    if (roomId) {
+      clearTimeout(timeout);
+      setJoining(false);
+    }
   };
 
 
@@ -505,7 +573,18 @@ function Lobby() {
       <main className="relative z-10 max-w-6xl mx-auto px-4 py-10">
         <header className="mb-8 flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Drawzzl</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold">Drawzzl</h1>
+              <div className="flex items-center gap-1">
+                <div className={`w-2 h-2 rounded-full transition-colors ${
+                  reconnecting ? 'bg-yellow-400 animate-pulse' : 
+                  connected ? 'bg-green-400' : 'bg-red-400'
+                }`} />
+                <span className="text-xs text-white/60">
+                  {reconnecting ? 'Reconnecting...' : connected ? 'Connected' : 'Disconnected'}
+                </span>
+              </div>
+            </div>
             <p className="text-white/60 text-sm">Real-time drawing & guessing</p>
           </div>
           <img 
