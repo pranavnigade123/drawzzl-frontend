@@ -17,6 +17,22 @@
 
 ---
 
+## ⚠️ Disclaimer
+
+> **Educational & Portfolio Project**
+> 
+> This project is created purely for **educational purposes** and **skill demonstration**. We are inspired by games like Skribbl.io and similar drawing/guessing games, but this is **not intended to compete with or harm any existing games or services**. 
+>
+> This is a **learning project** built to:
+> - Showcase full-stack development skills
+> - Explore real-time web technologies
+> - Practice modern web development frameworks
+> - Build a portfolio piece for educational purposes
+>
+> We have great respect for the original creators of drawing games and acknowledge their innovation in this space. This project is built from scratch as a technical exercise and learning opportunity.
+
+---
+
 ## ✨ Features
 
 ### 🎯 **Core Gameplay**
