@@ -66,7 +66,7 @@
 ### Prerequisites
 - **Node.js** 18.0 or higher
 - **npm** or **yarn** package manager
-- **Drawzzl Backend** running (see [backend repository]([../drawzzl-backend](https://github.com/pranavnigade123/drawzzl-frontend)))
+- **Drawzzl Backend** running (see [backend repository](../drawzzl-backend))
 
 ### Installation
 
