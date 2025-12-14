@@ -9,15 +9,23 @@ interface CanvasProps {
   roomId: string;
   isDrawer: boolean;
   currentWord?: string;
+  initialDrawing?: any[];
 }
 
-export default function Canvas({ roomId, isDrawer, currentWord }: CanvasProps) {
+export default function Canvas({ roomId, isDrawer, currentWord, initialDrawing }: CanvasProps) {
   const [tool, setTool] = useState<'brush' | 'eraser'>('brush');
   const [color, setColor] = useState('#000000');
-  const [lines, setLines] = useState<any[]>([]);
+  const [lines, setLines] = useState<any[]>(initialDrawing || []);
   const isDrawing = useRef(false);
 
   const colors = ['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500'];
+
+  // Update lines when initialDrawing changes (for reconnection)
+  useEffect(() => {
+    if (initialDrawing) {
+      setLines(initialDrawing);
+    }
+  }, [initialDrawing]);
 
   // Sync from server
   useEffect(() => {

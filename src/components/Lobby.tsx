@@ -8,8 +8,10 @@ import GameSettings, { GameSettingsData } from './GameSettings';
 import PointsIndicator from './PointsIndicator';
 import RoundResults from './RoundResults';
 import FinalResults from './FinalResults';
+import ErrorBoundary from './ErrorBoundary';
 import { AvatarDisplay } from './AvatarCreator';
 import { Crown, Loader2, Users, Send, Clock, Settings, Share2, Check } from 'lucide-react';
+import { generateSessionId, saveSession, getSession, clearSession, updateSessionRoom, markGameEnded } from '@/lib/session';
 
 type Mode = 'create' | 'join';
 
@@ -37,6 +39,7 @@ function Lobby() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [isCreator, setIsCreator] = useState(false);
   const [sessionId, setSessionId] = useState<string>('');
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   // game state
   const [gameStarted, setGameStarted] = useState(false);
@@ -93,6 +96,9 @@ function Lobby() {
   const [connected, setConnected] = useState(socket.connected);
   const [reconnecting, setReconnecting] = useState(false);
 
+  // canvas state
+  const [currentDrawing, setCurrentDrawing] = useState<any[]>([]);
+
   // derived
   const me = useMemo(
     () => players.find((p) => p.id === socket.id),
@@ -102,16 +108,30 @@ function Lobby() {
   // Use isCreator from backend (tracks original room owner)
   // This is set by roomCreated/roomJoined/hostTransferred events
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+L or Cmd+L to leave game
+      if ((e.ctrlKey || e.metaKey) && e.key === 'l' && roomId) {
+        e.preventDefault();
+        handleStartFresh();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [roomId]);
+
   useEffect(() => {
     setMounted(true);
 
-    // Try to reconnect if we have stored session
-    const storedRoomId = localStorage.getItem('drawzzl_roomId');
-    const storedSessionId = localStorage.getItem('drawzzl_sessionId');
-    
-    if (storedRoomId && storedSessionId && socket.connected) {
-      console.log('Attempting to reconnect to room:', storedRoomId);
-      socket.emit('reconnectRoom', { roomId: storedRoomId, sessionId: storedSessionId });
+    // Check for existing session and attempt reconnection
+    const existingSession = getSession();
+    if (existingSession && socket.connected) {
+      console.log('[SESSION] Found existing session, attempting reconnection');
+      setIsReconnecting(true);
+      setSessionId(existingSession.sessionId);
+      // The socket.ts file will handle the actual reconnection
     }
 
     // ----- handlers from server -----
@@ -120,9 +140,8 @@ function Lobby() {
       setIsCreator(data.isHost ?? true);
       if (data.sessionId) {
         setSessionId(data.sessionId);
-        // Store session info
-        localStorage.setItem('drawzzl_roomId', data.roomId);
-        localStorage.setItem('drawzzl_sessionId', data.sessionId);
+        updateSessionRoom(data.roomId);
+        console.log('[SESSION] Room created with session:', data.sessionId);
       }
     };
 
@@ -131,28 +150,52 @@ function Lobby() {
       setIsCreator(data.isHost ?? false);
       if (data.sessionId) {
         setSessionId(data.sessionId);
-        // Store session info
-        localStorage.setItem('drawzzl_roomId', data.roomId);
-        localStorage.setItem('drawzzl_sessionId', data.sessionId);
+        updateSessionRoom(data.roomId);
+        console.log('[SESSION] Room joined with session:', data.sessionId);
       }
     };
 
-    const onReconnected = (data: { 
+    const onReconnectionSuccess = (data: { 
       roomId: string; 
+      sessionId: string;
       isHost: boolean;
-      playerData: Player;
-      gameState: { gameStarted: boolean; round: number; maxRounds: number };
+      player: any;
+      gameState: any;
     }) => {
+      console.log('[SESSION] Reconnection successful');
+      
+      setIsReconnecting(false);
       setRoomId(data.roomId);
+      setSessionId(data.sessionId);
       setIsCreator(data.isHost);
-      setGameStarted(data.gameState.gameStarted);
-      setRound(data.gameState.round);
-      setMaxRounds(data.gameState.maxRounds);
+      
+      // Sync game state
+      if (data.gameState) {
+        setGameStarted(data.gameState.gameStarted);
+        setRound(data.gameState.round);
+        setMaxRounds(data.gameState.maxRounds);
+        setTimeLeft(data.gameState.timeLeft);
+        setWordHint(data.gameState.wordHint);
+        setIAmDrawer(data.gameState.isYourTurn);
+        setPlayers(data.gameState.players);
+        
+        // Restore chat history
+        if (data.gameState.recentChat) {
+          setChat(data.gameState.recentChat);
+        }
+
+        // Restore canvas drawing
+        if (data.gameState.currentDrawing) {
+          setCurrentDrawing(data.gameState.currentDrawing);
+        }
+      }
+      
+
+      
       setChat((c) => [
         ...c,
         { id: 'system', name: 'System', msg: 'Reconnected successfully!' },
       ]);
-      console.log('Reconnected to room:', data.roomId);
     };
 
     const onHostTransferred = (data: { isHost: boolean }) => {
@@ -263,6 +306,13 @@ function Lobby() {
       setWordHint('');
       setTimeLeft(0);
       setRound(1);
+      
+      // Mark game as ended and auto-clear session after 30 seconds
+      markGameEnded();
+      setTimeout(() => {
+        console.log('[SESSION] Auto-clearing session after game completion');
+        clearSession();
+      }, 30000); // 30 seconds to view results, then auto-clear
     };
 
     const onChat = ({ id, name, msg }: ChatItem) => {
@@ -308,6 +358,8 @@ function Lobby() {
       setSelectingWord(true);
       setWordSelectionTime(timeLimit);
       setWordSelectionScores(scores || []);
+      // Clear canvas for new turn
+      setCurrentDrawing([]);
     };
 
     const onDrawerSelecting = ({ scores }: { scores: Array<{ name: string; score: number; avatar?: number[] }> }) => {
@@ -322,7 +374,7 @@ function Lobby() {
     // subscribe
     socket.on('roomCreated', onRoomCreated);
     socket.on('roomJoined', onRoomJoined);
-    socket.on('reconnected', onReconnected);
+    socket.on('reconnectionSuccess', onReconnectionSuccess);
     socket.on('hostTransferred', onHostTransferred);
     socket.on('playerJoined', onPlayerJoined);
     socket.on('gameStarted', onGameStarted);
@@ -338,6 +390,17 @@ function Lobby() {
     socket.on('selectWord', onSelectWord);
     socket.on('drawerSelecting', onDrawerSelecting);
     socket.on('error', onError);
+
+    // Canvas sync handlers
+    const onDraw = (data: { lines: any[] }) => {
+      setCurrentDrawing(data.lines);
+    };
+    const onClearCanvas = () => {
+      setCurrentDrawing([]);
+    };
+    
+    socket.on('draw', onDraw);
+    socket.on('clearCanvas', onClearCanvas);
 
     // Connection status handlers
     const onConnect = () => {
@@ -369,7 +432,7 @@ function Lobby() {
     return () => {
       socket.off('roomCreated', onRoomCreated);
       socket.off('roomJoined', onRoomJoined);
-      socket.off('reconnected', onReconnected);
+      socket.off('reconnectionSuccess', onReconnectionSuccess);
       socket.off('hostTransferred', onHostTransferred);
       socket.off('playerJoined', onPlayerJoined);
       socket.off('gameStarted', onGameStarted);
@@ -385,6 +448,8 @@ function Lobby() {
       socket.off('selectWord', onSelectWord);
       socket.off('drawerSelecting', onDrawerSelecting);
       socket.off('error', onError);
+      socket.off('draw', onDraw);
+      socket.off('clearCanvas', onClearCanvas);
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('reconnecting', onReconnecting);
@@ -409,7 +474,25 @@ function Lobby() {
     }
     
     setCreating(true);
-    socket.emit('createRoom', { playerName, avatar });
+    
+    // Create or get session
+    let currentSessionId = sessionId;
+    if (!currentSessionId) {
+      currentSessionId = generateSessionId();
+      setSessionId(currentSessionId);
+    }
+    
+    // Save session data
+    saveSession({
+      sessionId: currentSessionId,
+      roomId: '', // Will be updated when room is created
+      playerName,
+      avatar,
+      createdAt: Date.now(),
+      gameEnded: false
+    });
+    
+    socket.emit('createRoom', { playerName, avatar, sessionId: currentSessionId });
     
     // Add timeout for error handling
     const timeout = setTimeout(() => {
@@ -440,7 +523,25 @@ function Lobby() {
     }
     
     setJoining(true);
-    socket.emit('joinRoom', { roomId: roomCode, playerName, avatar });
+    
+    // Create or get session
+    let currentSessionId = sessionId;
+    if (!currentSessionId) {
+      currentSessionId = generateSessionId();
+      setSessionId(currentSessionId);
+    }
+    
+    // Save session data
+    saveSession({
+      sessionId: currentSessionId,
+      roomId: roomCode,
+      playerName,
+      avatar,
+      createdAt: Date.now(),
+      gameEnded: false
+    });
+    
+    socket.emit('joinRoom', { roomId: roomCode, playerName, avatar, sessionId: currentSessionId });
     
     // Add timeout for error handling
     const timeout = setTimeout(() => {
@@ -489,7 +590,12 @@ function Lobby() {
   };
 
   const handleQuit = () => {
-    // Clear session storage (prevent reconnect)
+    console.log('[SESSION] User quit - clearing session immediately');
+    
+    // Clear our session system
+    clearSession();
+    
+    // Clear any legacy session storage
     localStorage.removeItem('drawzzl_roomId');
     localStorage.removeItem('drawzzl_sessionId');
     
@@ -550,6 +656,37 @@ function Lobby() {
     socket.emit('chat', { roomId, msg: trimmed, name: me?.name || 'Me' });
   };
 
+  const handleStartFresh = () => {
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      'Are you sure you want to leave this game?\n\n' +
+      'This will:\n' +
+      '• Remove you from the current room\n' +
+      '• Clear your game progress\n' +
+      '• Take you back to the main menu\n\n' +
+      'Other players can continue without you.'
+    );
+    
+    if (!confirmed) return;
+    
+    console.log('[SESSION] Starting fresh - clearing everything');
+    
+    // Clear session immediately
+    clearSession();
+    
+    // Clear any legacy storage
+    localStorage.removeItem('drawzzl_roomId');
+    localStorage.removeItem('drawzzl_sessionId');
+    
+    // Disconnect from current room if connected
+    if (socket.connected && roomId) {
+      socket.emit('leaveRoom', { roomId });
+    }
+    
+    // Just reload the page for a clean start
+    window.location.reload();
+  };
+
   if (!mounted) {
     return (
       <div className="min-h-screen relative overflow-hidden bg-zinc-950 flex items-center justify-center">
@@ -561,8 +698,23 @@ function Lobby() {
     );
   }
 
+  if (isReconnecting) {
+    return (
+      <div className="min-h-screen relative overflow-hidden bg-zinc-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-white/80 text-xl inline-flex items-center gap-2 mb-4">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Reconnecting to game...
+          </div>
+          <p className="text-white/60 text-sm">Please wait while we restore your session</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen relative overflow-hidden bg-zinc-950 text-white">
+    <ErrorBoundary>
+      <div className="min-h-screen relative overflow-hidden bg-zinc-950 text-white">
       {/* background accents */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute -top-32 -left-24 h-80 w-80 rounded-full bg-fuchsia-500/25 blur-3xl" />
@@ -587,6 +739,20 @@ function Lobby() {
             </div>
             <p className="text-white/60 text-sm">Real-time drawing & guessing</p>
           </div>
+          
+          <div className="flex items-center gap-3">
+            {/* Leave Game Button - Show when in a room */}
+            {roomId && (
+              <button
+                onClick={handleStartFresh}
+                className="px-4 py-2 bg-red-500/20 border border-red-400/50 text-red-300 rounded-lg hover:bg-red-500/30 hover:scale-105 transition-all text-sm font-medium flex items-center gap-2"
+                title="Leave current game and start fresh (Ctrl+L)"
+              >
+                🚪 Leave Game
+              </button>
+            )}
+          </div>
+          
           <img 
             src="/logo dark bg.png" 
             alt="Company Logo" 
@@ -671,7 +837,7 @@ function Lobby() {
                     <Settings className="w-4 h-4" />
                     Game Settings
                   </button>
-                  {players.length >= 2 && (
+                  {players.length >= 2 && !gameStarted && (
                     <button
                       onClick={startGame}
                       className="w-full mt-3 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:scale-105 transition-transform active:scale-95 shadow-lg"
@@ -679,6 +845,7 @@ function Lobby() {
                       Start Game
                     </button>
                   )}
+
                 </>
               )}
             </section>
@@ -753,6 +920,7 @@ function Lobby() {
                   roomId={roomId}
                   isDrawer={iAmDrawer}
                   currentWord={iAmDrawer ? currentWord : undefined}
+                  initialDrawing={currentDrawing}
                 />
               </div>
             </div>
@@ -849,7 +1017,12 @@ function Lobby() {
           null
         ) : (
           // ======= LANDING PAGE =======
-          <LandingPage onJoin={handleJoinRoom} onCreateRoom={handleCreateRoom} />
+          <LandingPage 
+            onJoin={handleJoinRoom} 
+            onCreateRoom={handleCreateRoom}
+            onStartFresh={handleStartFresh}
+            hasExistingSession={!!getSession()}
+          />
         )}
 
         {/* Final Results Screen */}
@@ -931,6 +1104,7 @@ function Lobby() {
         />
       </main>
     </div>
+    </ErrorBoundary>
   );
 }
 
