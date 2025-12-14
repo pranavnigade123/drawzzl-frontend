@@ -8,6 +8,7 @@ import GameSettings, { GameSettingsData } from './GameSettings';
 import PointsIndicator from './PointsIndicator';
 import RoundResults from './RoundResults';
 import FinalResults from './FinalResults';
+import ErrorBoundary from './ErrorBoundary';
 import { AvatarDisplay } from './AvatarCreator';
 import { Crown, Loader2, Users, Send, Clock, Settings, Share2, Check } from 'lucide-react';
 import { generateSessionId, saveSession, getSession, clearSession, updateSessionRoom, updateSessionActivity, markGameEnded } from '@/lib/session';
@@ -692,7 +693,8 @@ function Lobby() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-zinc-950 text-white">
+    <ErrorBoundary>
+      <div className="min-h-screen relative overflow-hidden bg-zinc-950 text-white">
       {/* background accents */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute -top-32 -left-24 h-80 w-80 rounded-full bg-fuchsia-500/25 blur-3xl" />
@@ -1067,6 +1069,7 @@ function Lobby() {
         />
       </main>
     </div>
+    </ErrorBoundary>
   );
 }
 

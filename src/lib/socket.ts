@@ -48,9 +48,22 @@ socket.on('reconnectionSuccess', (data) => {
 socket.on('error', (error) => {
   console.error('[SESSION] Socket error:', error);
   // Clear session if it's invalid (client-side only)
-  if (typeof window !== 'undefined' && error.message?.includes('Session not found') || error.message?.includes('Room not found')) {
+  if (typeof window !== 'undefined' && (error.message?.includes('Session not found') || error.message?.includes('Room not found'))) {
     clearSession();
   }
+});
+
+// Enhanced connection monitoring
+socket.on('connect_error', (error) => {
+  console.error('[SESSION] Connection error:', error);
+});
+
+socket.on('reconnect', (attemptNumber) => {
+  console.log('[SESSION] Reconnected after', attemptNumber, 'attempts');
+});
+
+socket.on('reconnect_failed', () => {
+  console.error('[SESSION] Failed to reconnect after maximum attempts');
 });
 
 // Make socket globally accessible in browser (for testing)
