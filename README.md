@@ -2,8 +2,6 @@
 
 <div align="center">
 
-![Drawzzl Logo](public/logo%20dark%20bg.png)
-
 **Real-time multiplayer drawing and guessing game built with Next.js**
 
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
@@ -66,7 +64,8 @@
 ### Prerequisites
 - **Node.js** 18.0 or higher
 - **npm** or **yarn** package manager
-- **Drawzzl Backend** running (see [backend repository](../drawzzl-backend))
+- **Drawzzl Backend** running (see [backend repository](https://github.com/pranavnigade123/drawzzl-backend))
+
 
 ### Installation
 
