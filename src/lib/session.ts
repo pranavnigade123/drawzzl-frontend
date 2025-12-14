@@ -89,8 +89,7 @@ export function markGameEnded(): void {
   const session = getSession();
   if (session) {
     session.gameEnded = true;
-    session.lastActivity = Date.now();
     saveSession(session);
-    console.log('[SESSION] Game marked as ended');
+    console.log('[SESSION DEBUG] Game marked as ended');
   }
 }
