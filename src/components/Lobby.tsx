@@ -11,7 +11,7 @@ import FinalResults from './FinalResults';
 import ErrorBoundary from './ErrorBoundary';
 import { AvatarDisplay } from './AvatarCreator';
 import { Crown, Loader2, Users, Send, Clock, Settings, Share2, Check } from 'lucide-react';
-import { generateSessionId, saveSession, getSession, clearSession, updateSessionRoom, updateSessionActivity, markGameEnded } from '@/lib/session';
+import { generateSessionId, saveSession, getSession, clearSession, updateSessionRoom, markGameEnded } from '@/lib/session';
 
 type Mode = 'create' | 'join';
 
@@ -162,7 +162,9 @@ function Lobby() {
       player: any;
       gameState: any;
     }) => {
-      console.log('[SESSION] Reconnection successful:', data);
+      console.log('[RECONNECT DEBUG] Reconnection successful:', data);
+      console.log(`[RECONNECT DEBUG] Game state - Started: ${data.gameState?.gameStarted}, Round: ${data.gameState?.round}, TimeLeft: ${data.gameState?.timeLeft}, IsMyTurn: ${data.gameState?.isYourTurn}`);
+      
       setIsReconnecting(false);
       setRoomId(data.roomId);
       setSessionId(data.sessionId);
@@ -304,12 +306,12 @@ function Lobby() {
       setTimeLeft(0);
       setRound(1);
       
-      // Mark game as ended and auto-clear session after 10 seconds
+      // Mark game as ended and auto-clear session after 30 seconds
       markGameEnded();
       setTimeout(() => {
         console.log('[SESSION] Auto-clearing session after game completion');
         clearSession();
-      }, 10000); // 10 seconds to view results, then auto-clear
+      }, 30000); // 30 seconds to view results, then auto-clear
     };
 
     const onChat = ({ id, name, msg }: ChatItem) => {
@@ -486,7 +488,6 @@ function Lobby() {
       playerName,
       avatar,
       createdAt: Date.now(),
-      lastActivity: Date.now(),
       gameEnded: false
     });
     
@@ -536,7 +537,6 @@ function Lobby() {
       playerName,
       avatar,
       createdAt: Date.now(),
-      lastActivity: Date.now(),
       gameEnded: false
     });
     
@@ -652,8 +652,6 @@ function Lobby() {
       return;
     }
     
-    // Update activity when user sends chat
-    updateSessionActivity();
     socket.emit('chat', { roomId, msg: trimmed, name: me?.name || 'Me' });
   };
 
