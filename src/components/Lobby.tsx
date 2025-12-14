@@ -10,6 +10,7 @@ import RoundResults from './RoundResults';
 import FinalResults from './FinalResults';
 import { AvatarDisplay } from './AvatarCreator';
 import { Crown, Loader2, Users, Send, Clock, Settings, Share2, Check } from 'lucide-react';
+import { generateSessionId, saveSession, getSession, clearSession, updateSessionRoom, updateSessionActivity, markGameEnded } from '@/lib/session';
 
 type Mode = 'create' | 'join';
 
@@ -37,6 +38,7 @@ function Lobby() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [isCreator, setIsCreator] = useState(false);
   const [sessionId, setSessionId] = useState<string>('');
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   // game state
   const [gameStarted, setGameStarted] = useState(false);
@@ -93,6 +95,9 @@ function Lobby() {
   const [connected, setConnected] = useState(socket.connected);
   const [reconnecting, setReconnecting] = useState(false);
 
+  // canvas state
+  const [currentDrawing, setCurrentDrawing] = useState<any[]>([]);
+
   // derived
   const me = useMemo(
     () => players.find((p) => p.id === socket.id),
@@ -105,13 +110,13 @@ function Lobby() {
   useEffect(() => {
     setMounted(true);
 
-    // Try to reconnect if we have stored session
-    const storedRoomId = localStorage.getItem('drawzzl_roomId');
-    const storedSessionId = localStorage.getItem('drawzzl_sessionId');
-    
-    if (storedRoomId && storedSessionId && socket.connected) {
-      console.log('Attempting to reconnect to room:', storedRoomId);
-      socket.emit('reconnectRoom', { roomId: storedRoomId, sessionId: storedSessionId });
+    // Check for existing session and attempt reconnection
+    const existingSession = getSession();
+    if (existingSession && socket.connected) {
+      console.log('[SESSION] Found existing session, attempting reconnection');
+      setIsReconnecting(true);
+      setSessionId(existingSession.sessionId);
+      // The socket.ts file will handle the actual reconnection
     }
 
     // ----- handlers from server -----
@@ -120,9 +125,8 @@ function Lobby() {
       setIsCreator(data.isHost ?? true);
       if (data.sessionId) {
         setSessionId(data.sessionId);
-        // Store session info
-        localStorage.setItem('drawzzl_roomId', data.roomId);
-        localStorage.setItem('drawzzl_sessionId', data.sessionId);
+        updateSessionRoom(data.roomId);
+        console.log('[SESSION] Room created with session:', data.sessionId);
       }
     };
 
@@ -131,28 +135,49 @@ function Lobby() {
       setIsCreator(data.isHost ?? false);
       if (data.sessionId) {
         setSessionId(data.sessionId);
-        // Store session info
-        localStorage.setItem('drawzzl_roomId', data.roomId);
-        localStorage.setItem('drawzzl_sessionId', data.sessionId);
+        updateSessionRoom(data.roomId);
+        console.log('[SESSION] Room joined with session:', data.sessionId);
       }
     };
 
-    const onReconnected = (data: { 
+    const onReconnectionSuccess = (data: { 
       roomId: string; 
+      sessionId: string;
       isHost: boolean;
-      playerData: Player;
-      gameState: { gameStarted: boolean; round: number; maxRounds: number };
+      player: any;
+      gameState: any;
     }) => {
+      console.log('[SESSION] Reconnection successful:', data);
+      setIsReconnecting(false);
       setRoomId(data.roomId);
+      setSessionId(data.sessionId);
       setIsCreator(data.isHost);
-      setGameStarted(data.gameState.gameStarted);
-      setRound(data.gameState.round);
-      setMaxRounds(data.gameState.maxRounds);
+      
+      // Sync game state
+      if (data.gameState) {
+        setGameStarted(data.gameState.gameStarted);
+        setRound(data.gameState.round);
+        setMaxRounds(data.gameState.maxRounds);
+        setTimeLeft(data.gameState.timeLeft);
+        setWordHint(data.gameState.wordHint);
+        setIAmDrawer(data.gameState.isYourTurn);
+        setPlayers(data.gameState.players);
+        
+        // Restore chat history
+        if (data.gameState.recentChat) {
+          setChat(data.gameState.recentChat);
+        }
+
+        // Restore canvas drawing
+        if (data.gameState.currentDrawing) {
+          setCurrentDrawing(data.gameState.currentDrawing);
+        }
+      }
+      
       setChat((c) => [
         ...c,
         { id: 'system', name: 'System', msg: 'Reconnected successfully!' },
       ]);
-      console.log('Reconnected to room:', data.roomId);
     };
 
     const onHostTransferred = (data: { isHost: boolean }) => {
@@ -263,6 +288,9 @@ function Lobby() {
       setWordHint('');
       setTimeLeft(0);
       setRound(1);
+      
+      // Mark game as ended in session
+      markGameEnded();
     };
 
     const onChat = ({ id, name, msg }: ChatItem) => {
@@ -308,6 +336,8 @@ function Lobby() {
       setSelectingWord(true);
       setWordSelectionTime(timeLimit);
       setWordSelectionScores(scores || []);
+      // Clear canvas for new turn
+      setCurrentDrawing([]);
     };
 
     const onDrawerSelecting = ({ scores }: { scores: Array<{ name: string; score: number; avatar?: number[] }> }) => {
@@ -322,7 +352,7 @@ function Lobby() {
     // subscribe
     socket.on('roomCreated', onRoomCreated);
     socket.on('roomJoined', onRoomJoined);
-    socket.on('reconnected', onReconnected);
+    socket.on('reconnectionSuccess', onReconnectionSuccess);
     socket.on('hostTransferred', onHostTransferred);
     socket.on('playerJoined', onPlayerJoined);
     socket.on('gameStarted', onGameStarted);
@@ -338,6 +368,17 @@ function Lobby() {
     socket.on('selectWord', onSelectWord);
     socket.on('drawerSelecting', onDrawerSelecting);
     socket.on('error', onError);
+
+    // Canvas sync handlers
+    const onDraw = (data: { lines: any[] }) => {
+      setCurrentDrawing(data.lines);
+    };
+    const onClearCanvas = () => {
+      setCurrentDrawing([]);
+    };
+    
+    socket.on('draw', onDraw);
+    socket.on('clearCanvas', onClearCanvas);
 
     // Connection status handlers
     const onConnect = () => {
@@ -369,7 +410,7 @@ function Lobby() {
     return () => {
       socket.off('roomCreated', onRoomCreated);
       socket.off('roomJoined', onRoomJoined);
-      socket.off('reconnected', onReconnected);
+      socket.off('reconnectionSuccess', onReconnectionSuccess);
       socket.off('hostTransferred', onHostTransferred);
       socket.off('playerJoined', onPlayerJoined);
       socket.off('gameStarted', onGameStarted);
@@ -385,6 +426,8 @@ function Lobby() {
       socket.off('selectWord', onSelectWord);
       socket.off('drawerSelecting', onDrawerSelecting);
       socket.off('error', onError);
+      socket.off('draw', onDraw);
+      socket.off('clearCanvas', onClearCanvas);
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('reconnecting', onReconnecting);
@@ -409,7 +452,26 @@ function Lobby() {
     }
     
     setCreating(true);
-    socket.emit('createRoom', { playerName, avatar });
+    
+    // Create or get session
+    let currentSessionId = sessionId;
+    if (!currentSessionId) {
+      currentSessionId = generateSessionId();
+      setSessionId(currentSessionId);
+    }
+    
+    // Save session data
+    saveSession({
+      sessionId: currentSessionId,
+      roomId: '', // Will be updated when room is created
+      playerName,
+      avatar,
+      createdAt: Date.now(),
+      lastActivity: Date.now(),
+      gameEnded: false
+    });
+    
+    socket.emit('createRoom', { playerName, avatar, sessionId: currentSessionId });
     
     // Add timeout for error handling
     const timeout = setTimeout(() => {
@@ -440,7 +502,26 @@ function Lobby() {
     }
     
     setJoining(true);
-    socket.emit('joinRoom', { roomId: roomCode, playerName, avatar });
+    
+    // Create or get session
+    let currentSessionId = sessionId;
+    if (!currentSessionId) {
+      currentSessionId = generateSessionId();
+      setSessionId(currentSessionId);
+    }
+    
+    // Save session data
+    saveSession({
+      sessionId: currentSessionId,
+      roomId: roomCode,
+      playerName,
+      avatar,
+      createdAt: Date.now(),
+      lastActivity: Date.now(),
+      gameEnded: false
+    });
+    
+    socket.emit('joinRoom', { roomId: roomCode, playerName, avatar, sessionId: currentSessionId });
     
     // Add timeout for error handling
     const timeout = setTimeout(() => {
@@ -547,7 +628,42 @@ function Lobby() {
       return;
     }
     
+    // Update activity when user sends chat
+    updateSessionActivity();
     socket.emit('chat', { roomId, msg: trimmed, name: me?.name || 'Me' });
+  };
+
+  const handleStartFresh = () => {
+    // Clear session and reset all state
+    clearSession();
+    
+    // Reset all state to initial values
+    setRoomId('');
+    setPlayers([]);
+    setIsCreator(false);
+    setSessionId('');
+    setIsReconnecting(false);
+    setGameStarted(false);
+    setIAmDrawer(false);
+    setCurrentWord(undefined);
+    setWordHint('');
+    setTimeLeft(0);
+    setRound(1);
+    setMaxRounds(3);
+    setChat([]);
+    setCurrentDrawing([]);
+    setShowRoundResults(false);
+    setShowFinalResults(false);
+    setGameEnded(false);
+    setSelectingWord(false);
+    setWordChoices([]);
+    
+    // Disconnect from current room if connected
+    if (socket.connected && roomId) {
+      socket.emit('leaveRoom', { roomId });
+    }
+    
+    console.log('[SESSION] Started fresh - all data cleared');
   };
 
   if (!mounted) {
@@ -556,6 +672,20 @@ function Lobby() {
         <div className="text-white/80 text-xl inline-flex items-center gap-2">
           <Loader2 className="h-5 w-5 animate-spin" />
           Loading
+        </div>
+      </div>
+    );
+  }
+
+  if (isReconnecting) {
+    return (
+      <div className="min-h-screen relative overflow-hidden bg-zinc-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-white/80 text-xl inline-flex items-center gap-2 mb-4">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Reconnecting to game...
+          </div>
+          <p className="text-white/60 text-sm">Please wait while we restore your session</p>
         </div>
       </div>
     );
@@ -753,6 +883,7 @@ function Lobby() {
                   roomId={roomId}
                   isDrawer={iAmDrawer}
                   currentWord={iAmDrawer ? currentWord : undefined}
+                  initialDrawing={currentDrawing}
                 />
               </div>
             </div>
@@ -849,7 +980,12 @@ function Lobby() {
           null
         ) : (
           // ======= LANDING PAGE =======
-          <LandingPage onJoin={handleJoinRoom} onCreateRoom={handleCreateRoom} />
+          <LandingPage 
+            onJoin={handleJoinRoom} 
+            onCreateRoom={handleCreateRoom}
+            onStartFresh={handleStartFresh}
+            hasExistingSession={!!getSession()}
+          />
         )}
 
         {/* Final Results Screen */}
