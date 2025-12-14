@@ -21,9 +21,9 @@ export function saveSession(session: PlayerSession): void {
   
   try {
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    console.log(`[SESSION DEBUG] Session saved: ${session.sessionId}, Room: ${session.roomId}, Ended: ${session.gameEnded}`);
+    console.log(`[SESSION] Session saved: ${session.sessionId}`);
   } catch (error) {
-    console.error('[SESSION DEBUG] Failed to save session:', error);
+    console.error('[SESSION] Failed to save session:', error);
   }
 }
 
@@ -32,35 +32,28 @@ export function getSession(): PlayerSession | null {
   
   try {
     const stored = localStorage.getItem(SESSION_KEY);
-    if (!stored) {
-      console.log('[SESSION DEBUG] No stored session found');
-      return null;
-    }
+    if (!stored) return null;
 
     const session: PlayerSession = JSON.parse(stored);
     const age = Date.now() - session.createdAt;
-    const ageMinutes = Math.floor(age / 60000);
-    
-    console.log(`[SESSION DEBUG] Session found: ${session.sessionId}, Age: ${ageMinutes}min, Room: ${session.roomId}, Ended: ${session.gameEnded}`);
     
     // Simple timeout check - 15 minutes total
     if (age > SESSION_TIMEOUT) {
-      console.log(`[SESSION DEBUG] Session expired after ${ageMinutes} minutes (limit: 15min)`);
+      console.log('[SESSION] Session expired after 15 minutes');
       clearSession();
       return null;
     }
 
     // Check if game already ended
     if (session.gameEnded) {
-      console.log('[SESSION DEBUG] Game already ended, clearing session');
+      console.log('[SESSION] Game ended, clearing session');
       clearSession();
       return null;
     }
 
-    console.log('[SESSION DEBUG] Session valid, returning');
     return session;
   } catch (error) {
-    console.error('[SESSION DEBUG] Failed to load session:', error);
+    console.error('[SESSION] Failed to load session:', error);
     clearSession();
     return null;
   }
@@ -71,9 +64,9 @@ export function clearSession(): void {
   
   try {
     localStorage.removeItem(SESSION_KEY);
-    console.log('[SESSION DEBUG] Session cleared from localStorage');
+    console.log('[SESSION] Session cleared');
   } catch (error) {
-    console.error('[SESSION DEBUG] Failed to clear session:', error);
+    console.error('[SESSION] Failed to clear session:', error);
   }
 }
 
@@ -90,6 +83,6 @@ export function markGameEnded(): void {
   if (session) {
     session.gameEnded = true;
     saveSession(session);
-    console.log('[SESSION DEBUG] Game marked as ended');
+    console.log('[SESSION] Game marked as ended');
   }
 }

@@ -162,16 +162,12 @@ function Lobby() {
       player: any;
       gameState: any;
     }) => {
-      console.log('[RECONNECT DEBUG] Reconnection successful:', data);
-      console.log(`[RECONNECT DEBUG] Game state - Started: ${data.gameState?.gameStarted}, Round: ${data.gameState?.round}, TimeLeft: ${data.gameState?.timeLeft}, IsMyTurn: ${data.gameState?.isYourTurn}`);
-      console.log(`[RECONNECT DEBUG] Host status - IsHost: ${data.isHost}, Players count: ${data.gameState?.players?.length || 0}`);
+      console.log('[SESSION] Reconnection successful');
       
       setIsReconnecting(false);
       setRoomId(data.roomId);
       setSessionId(data.sessionId);
       setIsCreator(data.isHost);
-      
-      console.log(`[RECONNECT DEBUG] State set - IsCreator: ${data.isHost}, RoomId: ${data.roomId}`);
       
       // Sync game state
       if (data.gameState) {
@@ -194,10 +190,7 @@ function Lobby() {
         }
       }
       
-      // Debug: Check Start Game button visibility after state update
-      setTimeout(() => {
-        console.log(`[RECONNECT DEBUG] After state sync - IsCreator: ${data.isHost}, Players: ${data.gameState?.players?.length || 0}, GameStarted: ${data.gameState?.gameStarted}, Should show Start button: ${data.isHost && (data.gameState?.players?.length || 0) >= 2 && !data.gameState?.gameStarted}`);
-      }, 100);
+
       
       setChat((c) => [
         ...c,
@@ -852,12 +845,7 @@ function Lobby() {
                       Start Game
                     </button>
                   )}
-                  {/* Debug info */}
-                  {process.env.NODE_ENV === 'development' && (
-                    <div className="mt-2 text-xs text-white/50">
-                      Debug: IsCreator={isCreator.toString()}, Players={players.length}, GameStarted={gameStarted.toString()}
-                    </div>
-                  )}
+
                 </>
               )}
             </section>
