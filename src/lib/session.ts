@@ -11,8 +11,9 @@ export interface PlayerSession {
 }
 
 const SESSION_KEY = 'drawzzl_session';
-const SESSION_EXPIRY = 2 * 60 * 60 * 1000; // 2 hours (much shorter)
-const GAME_SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes of inactivity
+const SESSION_EXPIRY = 30 * 60 * 1000; // 30 minutes maximum (for multiple games)
+const GAME_SESSION_TIMEOUT = 3 * 60 * 1000; // 3 minutes of inactivity (reasonable pause)
+const GAME_MAX_DURATION = 20 * 60 * 1000; // 20 minutes maximum (covers even longest games)
 
 export function generateSessionId(): string {
   return 'session_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
@@ -48,7 +49,14 @@ export function getSession(): PlayerSession | null {
     // Check if game session timed out due to inactivity
     const lastActivity = session.lastActivity || session.createdAt;
     if (Date.now() - lastActivity > GAME_SESSION_TIMEOUT) {
-      console.log('[SESSION] Game session timed out (inactive)');
+      console.log('[SESSION] Game session timed out (inactive for 3+ minutes)');
+      clearSession();
+      return null;
+    }
+
+    // Check if game has been running too long
+    if (Date.now() - session.createdAt > GAME_MAX_DURATION) {
+      console.log('[SESSION] Game session expired (running for 20+ minutes)');
       clearSession();
       return null;
     }

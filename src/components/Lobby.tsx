@@ -108,6 +108,20 @@ function Lobby() {
   // Use isCreator from backend (tracks original room owner)
   // This is set by roomCreated/roomJoined/hostTransferred events
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+L or Cmd+L to leave game
+      if ((e.ctrlKey || e.metaKey) && e.key === 'l' && roomId) {
+        e.preventDefault();
+        handleStartFresh();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [roomId]);
+
   useEffect(() => {
     setMounted(true);
 
@@ -290,8 +304,12 @@ function Lobby() {
       setTimeLeft(0);
       setRound(1);
       
-      // Mark game as ended in session
+      // Mark game as ended and auto-clear session after 10 seconds
       markGameEnded();
+      setTimeout(() => {
+        console.log('[SESSION] Auto-clearing session after game completion');
+        clearSession();
+      }, 10000); // 10 seconds to view results, then auto-clear
     };
 
     const onChat = ({ id, name, msg }: ChatItem) => {
@@ -571,7 +589,12 @@ function Lobby() {
   };
 
   const handleQuit = () => {
-    // Clear session storage (prevent reconnect)
+    console.log('[SESSION] User quit - clearing session immediately');
+    
+    // Clear our session system
+    clearSession();
+    
+    // Clear any legacy session storage
     localStorage.removeItem('drawzzl_roomId');
     localStorage.removeItem('drawzzl_sessionId');
     
@@ -635,36 +658,34 @@ function Lobby() {
   };
 
   const handleStartFresh = () => {
-    // Clear session and reset all state
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      'Are you sure you want to leave this game?\n\n' +
+      'This will:\n' +
+      '• Remove you from the current room\n' +
+      '• Clear your game progress\n' +
+      '• Take you back to the main menu\n\n' +
+      'Other players can continue without you.'
+    );
+    
+    if (!confirmed) return;
+    
+    console.log('[SESSION] Starting fresh - clearing everything');
+    
+    // Clear session immediately
     clearSession();
     
-    // Reset all state to initial values
-    setRoomId('');
-    setPlayers([]);
-    setIsCreator(false);
-    setSessionId('');
-    setIsReconnecting(false);
-    setGameStarted(false);
-    setIAmDrawer(false);
-    setCurrentWord(undefined);
-    setWordHint('');
-    setTimeLeft(0);
-    setRound(1);
-    setMaxRounds(3);
-    setChat([]);
-    setCurrentDrawing([]);
-    setShowRoundResults(false);
-    setShowFinalResults(false);
-    setGameEnded(false);
-    setSelectingWord(false);
-    setWordChoices([]);
+    // Clear any legacy storage
+    localStorage.removeItem('drawzzl_roomId');
+    localStorage.removeItem('drawzzl_sessionId');
     
     // Disconnect from current room if connected
     if (socket.connected && roomId) {
       socket.emit('leaveRoom', { roomId });
     }
     
-    console.log('[SESSION] Started fresh - all data cleared');
+    // Just reload the page for a clean start
+    window.location.reload();
   };
 
   if (!mounted) {
@@ -719,6 +740,20 @@ function Lobby() {
             </div>
             <p className="text-white/60 text-sm">Real-time drawing & guessing</p>
           </div>
+          
+          <div className="flex items-center gap-3">
+            {/* Leave Game Button - Show when in a room */}
+            {roomId && (
+              <button
+                onClick={handleStartFresh}
+                className="px-4 py-2 bg-red-500/20 border border-red-400/50 text-red-300 rounded-lg hover:bg-red-500/30 hover:scale-105 transition-all text-sm font-medium flex items-center gap-2"
+                title="Leave current game and start fresh (Ctrl+L)"
+              >
+                🚪 Leave Game
+              </button>
+            )}
+          </div>
+          
           <img 
             src="/logo dark bg.png" 
             alt="Company Logo" 
