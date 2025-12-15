@@ -9,6 +9,8 @@ import PointsIndicator from './PointsIndicator';
 import RoundResults from './RoundResults';
 import FinalResults from './FinalResults';
 import ErrorBoundary from './ErrorBoundary';
+import PlayersList from './PlayersList';
+import ChatSection from './ChatSection';
 import { AvatarDisplay } from './AvatarCreator';
 import { Crown, Loader2, Users, Send, Clock, Settings, Share2, Check } from 'lucide-react';
 import { generateSessionId, saveSession, getSession, clearSession, updateSessionRoom, markGameEnded } from '@/lib/session';
@@ -53,7 +55,7 @@ function Lobby() {
   // chat / guess
   const [chat, setChat] = useState<ChatItem[]>([]);
   const [guess, setGuess] = useState('');
-  const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const [lobbyChatInput, setLobbyChatInput] = useState('');
 
   // forms
   const [joinForm, setJoinForm] = useState({ roomId: '', playerName: '' });
@@ -179,6 +181,12 @@ function Lobby() {
         setIAmDrawer(data.gameState.isYourTurn);
         setPlayers(data.gameState.players);
         
+        // Restore current word for drawer
+        if (data.gameState.isYourTurn && data.gameState.currentWord) {
+          setCurrentWord(data.gameState.currentWord);
+          console.log('[SESSION] Restored current word for drawer:', data.gameState.currentWord);
+        }
+        
         // Restore chat history
         if (data.gameState.recentChat) {
           setChat(data.gameState.recentChat);
@@ -209,6 +217,14 @@ function Lobby() {
     const onPlayerJoined = (data: { players: Player[] }) => {
       console.log('Players updated:', data.players?.length || 0, 'players');
       setPlayers(data.players || []);
+    };
+
+    const onPlayerLeft = (data: { playerName: string; playerId: string }) => {
+      console.log(`[SESSION] Player ${data.playerName} left the room`);
+      setChat((c) => [
+        ...c,
+        { id: 'system', name: 'System', msg: `${data.playerName} left the game` },
+      ]);
     };
 
     const onGameStarted = (d: {
@@ -377,6 +393,7 @@ function Lobby() {
     socket.on('reconnectionSuccess', onReconnectionSuccess);
     socket.on('hostTransferred', onHostTransferred);
     socket.on('playerJoined', onPlayerJoined);
+    socket.on('playerLeft', onPlayerLeft);
     socket.on('gameStarted', onGameStarted);
     socket.on('yourWord', onYourWord);
     socket.on('tick', onTick);
@@ -435,6 +452,7 @@ function Lobby() {
       socket.off('reconnectionSuccess', onReconnectionSuccess);
       socket.off('hostTransferred', onHostTransferred);
       socket.off('playerJoined', onPlayerJoined);
+      socket.off('playerLeft', onPlayerLeft);
       socket.off('gameStarted', onGameStarted);
       socket.off('yourWord', onYourWord);
       socket.off('tick', onTick);
@@ -457,10 +475,7 @@ function Lobby() {
     };
   }, []);
 
-  useEffect(() => {
-    // autoscroll chat
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chat]);
+
 
   // ----- client emits -----
   const handleCreateRoom = (playerName: string, avatar: number[]) => {
@@ -689,44 +704,76 @@ function Lobby() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen relative overflow-hidden bg-zinc-950 flex items-center justify-center">
-        <div className="text-white/80 text-xl inline-flex items-center gap-2">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Loading
+      <ErrorBoundary>
+        <div className="min-h-screen relative overflow-hidden bg-zinc-950 text-white">
+          <header className="fixed top-0 left-0 right-0 z-[9999] bg-zinc-950/95 backdrop-blur-md border-b border-white/20 shadow-lg">
+            <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl font-bold">Drawzzl</h1>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-gray-400" />
+                  <span className="text-xs text-white/60">Loading...</span>
+                </div>
+                <p className="text-white/60 text-sm hidden sm:block">Real-time drawing & guessing</p>
+              </div>
+            </div>
+          </header>
+          
+          <div className="flex items-center justify-center min-h-screen" style={{ marginTop: '80px' }}>
+            <div className="text-white/80 text-xl inline-flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Loading
+            </div>
+          </div>
         </div>
-      </div>
+      </ErrorBoundary>
     );
   }
 
   if (isReconnecting) {
     return (
-      <div className="min-h-screen relative overflow-hidden bg-zinc-950 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-white/80 text-xl inline-flex items-center gap-2 mb-4">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Reconnecting to game...
+      <ErrorBoundary>
+        <div className="min-h-screen relative overflow-hidden bg-zinc-950 text-white">
+          <header className="fixed top-0 left-0 right-0 z-[9999] bg-zinc-950/95 backdrop-blur-md border-b border-white/20 shadow-lg">
+            <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl font-bold">Drawzzl</h1>
+                <div className="flex items-center gap-1">
+                  <div className={`w-2 h-2 rounded-full transition-colors ${
+                    reconnecting ? 'bg-yellow-400 animate-pulse' : 
+                    connected ? 'bg-green-400' : 'bg-red-400'
+                  }`} />
+                  <span className="text-xs text-white/60">
+                    {reconnecting ? 'Reconnecting...' : connected ? 'Connected' : 'Disconnected'}
+                  </span>
+                </div>
+                <p className="text-white/60 text-sm hidden sm:block">Real-time drawing & guessing</p>
+              </div>
+            </div>
+          </header>
+          
+          <div className="flex items-center justify-center min-h-screen" style={{ marginTop: '80px' }}>
+            <div className="text-center">
+              <div className="text-white/80 text-xl inline-flex items-center gap-2 mb-4">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Reconnecting to game...
+              </div>
+              <p className="text-white/60 text-sm">Please wait while we restore your session</p>
+            </div>
           </div>
-          <p className="text-white/60 text-sm">Please wait while we restore your session</p>
         </div>
-      </div>
+      </ErrorBoundary>
     );
   }
 
   return (
     <ErrorBoundary>
       <div className="min-h-screen relative overflow-hidden bg-zinc-950 text-white">
-      {/* background accents */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-32 -left-24 h-80 w-80 rounded-full bg-fuchsia-500/25 blur-3xl" />
-        <div className="absolute top-1/3 -right-24 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl" />
-        <div className="absolute -bottom-28 left-1/4 h-64 w-64 rounded-full bg-indigo-500/25 blur-3xl" />
-      </div>
-
-      <main className="relative z-10 max-w-6xl mx-auto px-4 py-10">
-        <header className="mb-8 flex items-start justify-between">
-          <div>
+        {/* Fixed Navbar - Always visible at top */}
+        <header className="fixed top-0 left-0 right-0 z-[9999] bg-zinc-950/95 backdrop-blur-md border-b border-white/20 shadow-lg">
+          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold">Drawzzl</h1>
+              <h1 className="text-xl font-bold">Drawzzl</h1>
               <div className="flex items-center gap-1">
                 <div className={`w-2 h-2 rounded-full transition-colors ${
                   reconnecting ? 'bg-yellow-400 animate-pulse' : 
@@ -736,157 +783,100 @@ function Lobby() {
                   {reconnecting ? 'Reconnecting...' : connected ? 'Connected' : 'Disconnected'}
                 </span>
               </div>
+              <p className="text-white/60 text-sm hidden sm:block">Real-time drawing & guessing</p>
             </div>
-            <p className="text-white/60 text-sm">Real-time drawing & guessing</p>
-          </div>
-          
-          <div className="flex items-center gap-3">
+            
             {/* Leave Game Button - Show when in a room */}
             {roomId && (
               <button
                 onClick={handleStartFresh}
-                className="px-4 py-2 bg-red-500/20 border border-red-400/50 text-red-300 rounded-lg hover:bg-red-500/30 hover:scale-105 transition-all text-sm font-medium flex items-center gap-2"
+                className="px-3 py-1.5 bg-red-500/30 border border-red-400/60 text-red-200 rounded-lg hover:bg-red-500/50 hover:scale-105 transition-all text-sm font-medium flex items-center gap-2"
                 title="Leave current game and start fresh (Ctrl+L)"
               >
                 🚪 Leave Game
               </button>
             )}
           </div>
-          
-          <img 
-            src="/logo dark bg.png" 
-            alt="Company Logo" 
-            className="h-10 md:h-12 w-auto opacity-80 hover:opacity-100 transition-opacity"
-          />
         </header>
+
+        {/* Background accents */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute -top-32 -left-24 h-80 w-80 rounded-full bg-fuchsia-500/25 blur-3xl" />
+          <div className="absolute top-1/3 -right-24 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl" />
+          <div className="absolute -bottom-28 left-1/4 h-64 w-64 rounded-full bg-indigo-500/25 blur-3xl" />
+        </div>
+
+        {/* Main content with top margin for fixed navbar */}
+        <main className="relative z-10 max-w-6xl mx-auto px-4 py-10" style={{ marginTop: '80px' }}>
 
         {roomId && !gameStarted ? (
           // ======= LOBBY VIEW =======
           <div className="grid lg:grid-cols-3 gap-4 md:gap-6 animate-fadeIn">
-            {/* room card */}
-            <section className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all hover:border-white/20 hover:shadow-lg">
-              <div className="mb-4">
-                <div className="text-white/70 text-xs mb-2">Room Code</div>
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-semibold tracking-wider flex-1 bg-white/5 px-3 py-2 rounded-lg border border-white/10">
-                    {roomId}
-                  </span>
-                  <button
-                    onClick={handleCopyCode}
-                    className={`px-3 py-2 rounded-lg border text-xs font-medium transition-all flex items-center gap-1 ${
-                      copied 
-                        ? 'border-green-400 bg-green-400/20 text-green-300 scale-105' 
-                        : 'border-white/10 bg-white/10 text-white hover:bg-white/20'
-                    }`}
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="w-3 h-3" />
-                        Copied!
-                      </>
-                    ) : (
-                      'Copy'
-                    )}
-                  </button>
-                  <button
-                    onClick={handleShareLink}
-                    className="px-3 py-2 rounded-lg border border-cyan-400/30 bg-cyan-400/10 text-cyan-300 text-xs font-medium hover:bg-cyan-400/20 transition-all hover:scale-105 flex items-center gap-1"
-                    title="Copy share link"
-                  >
-                    <Share2 className="w-3 h-3" />
-                    Share
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {players.map((p, idx) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-white/80 transition-all hover:bg-white/10 hover:scale-[1.01]"
-                  >
-                    <div className="flex items-center gap-3">
-                      <AvatarDisplay avatar={p.avatar || [0, 0, 0, 0]} size={32} />
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{p.name}</span>
-                        {idx === 0 && (
-                          <span className="inline-flex items-center gap-1 rounded-md border border-fuchsia-400/30 bg-fuchsia-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-fuchsia-100">
-                            <Crown className="h-3 w-3" />
-                            Host
-                          </span>
-                        )}
-                        {p.isDrawer && (
-                          <span className="inline-flex items-center gap-1 rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-100">
-                            <Crown className="h-3 w-3" />
-                            Drawer
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <span className="text-sm text-white/60">Score {p.score}</span>
-                  </div>
-                ))}
-              </div>
-
-              {isCreator && (
-                <>
-                  <button
-                    onClick={() => setShowSettings(true)}
-                    className="w-full mt-4 py-2.5 flex items-center justify-center gap-2 border border-white/10 bg-white/5 text-white font-medium rounded-xl hover:bg-white/10 transition"
-                  >
-                    <Settings className="w-4 h-4" />
-                    Game Settings
-                  </button>
-                  {players.length >= 2 && !gameStarted && (
+            {/* room code and players section */}
+            <div className="space-y-4">
+              {/* room code */}
+              <section className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] transition-all hover:border-white/20 hover:shadow-lg">
+                <div className="mb-4">
+                  <div className="text-white/70 text-xs mb-2">Room Code</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-semibold tracking-wider flex-1 bg-white/5 px-3 py-2 rounded-lg border border-white/10">
+                      {roomId}
+                    </span>
                     <button
-                      onClick={startGame}
-                      className="w-full mt-3 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl hover:scale-105 transition-transform active:scale-95 shadow-lg"
+                      onClick={handleCopyCode}
+                      className={`px-3 py-2 rounded-lg border text-xs font-medium transition-all flex items-center gap-1 ${
+                        copied 
+                          ? 'border-green-400 bg-green-400/20 text-green-300 scale-105' 
+                          : 'border-white/10 bg-white/10 text-white hover:bg-white/20'
+                      }`}
                     >
-                      Start Game
+                      {copied ? (
+                        <>
+                          <Check className="w-3 h-3" />
+                          Copied!
+                        </>
+                      ) : (
+                        'Copy'
+                      )}
                     </button>
-                  )}
+                    <button
+                      onClick={handleShareLink}
+                      className="px-3 py-2 rounded-lg border border-cyan-400/30 bg-cyan-400/10 text-cyan-300 text-xs font-medium hover:bg-cyan-400/20 transition-all hover:scale-105 flex items-center gap-1"
+                      title="Copy share link"
+                    >
+                      <Share2 className="w-3 h-3" />
+                      Share
+                    </button>
+                  </div>
+                </div>
+              </section>
 
-                </>
-              )}
-            </section>
+              {/* players list */}
+              <PlayersList
+                players={players}
+                isCreator={isCreator}
+                gameStarted={gameStarted}
+                onShowSettings={() => setShowSettings(true)}
+                onStartGame={startGame}
+                onLeaveGame={handleStartFresh}
+              />
+            </div>
 
             {/* lightweight chat even in lobby */}
-            <section className="lg:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4 md:p-6 transition-all hover:border-white/20">
-              <h3 className="text-lg font-semibold mb-3">Chat</h3>
-              <div className="h-64 overflow-y-auto rounded-md border border-white/10 bg-black/20 p-3">
-                {chat.map((m, idx) => (
-                  <div key={idx} className="text-sm mb-1">
-                    <span className="text-white/60 mr-1">{m.name}:</span>
-                    <span>{m.msg}</span>
-                  </div>
-                ))}
-                <div ref={chatEndRef} />
-              </div>
-              <div className="mt-3 flex gap-2">
-                <input
-                  placeholder="Type a message"
-                  className="flex-1 rounded-md border border-white/10 bg-white/10 px-3 py-2 outline-none"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      sendChat((e.target as HTMLInputElement).value);
-                      (e.target as HTMLInputElement).value = '';
-                    }
-                  }}
-                />
-                <button
-                  onClick={() => {
-                    const el = document.querySelector<HTMLInputElement>('input[placeholder="Type a message"]');
-                    if (el?.value) {
-                      sendChat(el.value);
-                      el.value = '';
-                    }
-                  }}
-                  className="px-3 py-2 rounded-md border border-white/10 bg-white/10"
-                >
-                  <Send className="h-4 w-4" />
-                </button>
-              </div>
-            </section>
+            <ChatSection
+              chat={chat}
+              inputValue={lobbyChatInput}
+              onInputChange={setLobbyChatInput}
+              onSendMessage={() => {
+                sendChat(lobbyChatInput);
+                setLobbyChatInput('');
+              }}
+              title="Chat"
+              placeholder="Type a message"
+              isGameMode={false}
+              containerClassName="lg:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4 md:p-6 transition-all hover:border-white/20"
+              chatHeight="h-64"
+            />
           </div>
         ) : roomId && gameStarted ? (
           // ======= GAME VIEW =======
@@ -927,57 +917,19 @@ function Lobby() {
 
             {/* right: chat / guess + players */}
             <div className="space-y-4 md:space-y-6">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-6 transition-all hover:border-white/20">
-                <h3 className="text-lg font-semibold mb-3">{iAmDrawer ? 'Chat' : 'Guess / Chat'}</h3>
-                <div className="h-64 md:h-80 overflow-y-auto rounded-lg border border-white/10 bg-black/30 p-3">
-                  {chat.map((m, idx) => {
-                    const isHint = m.id === 'hint';
-                    const isError = m.id === 'error';
-                    const isSystem = m.id === 'system' || m.id === 'server';
-                    
-                    if (isSystem || isHint || isError) {
-                      return (
-                        <div key={idx} className={`text-sm mb-2 text-center py-1 px-2 rounded ${
-                          isHint ? 'text-yellow-300 bg-yellow-500/10' :
-                          isError ? 'text-red-300 bg-red-500/10' :
-                          'text-blue-300 bg-blue-500/10'
-                        }`}>
-                          {m.msg}
-                        </div>
-                      );
-                    }
-                    
-                    return (
-                      <div key={idx} className="text-sm mb-1.5">
-                        <span className="text-cyan-400 font-medium mr-1.5">{m.name}:</span>
-                        <span className="text-white/90">{m.msg}</span>
-                      </div>
-                    );
-                  })}
-                  <div ref={chatEndRef} />
-                </div>
-
-                {!iAmDrawer && (
-                  <div className="mt-3 flex gap-2">
-                    <input
-                      value={guess}
-                      onChange={(e) => setGuess(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') sendGuess();
-                      }}
-                      placeholder="Type your guess…"
-                      className="flex-1 rounded-lg border border-white/10 bg-white/10 px-3 py-2 outline-none focus:border-cyan-400 transition-colors placeholder:text-white/40 text-white"
-                    />
-                    <button
-                      onClick={sendGuess}
-                      className="px-3 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-600 transition-colors"
-                      aria-label="Send guess"
-                    >
-                      <Send className="h-4 w-4 text-white" />
-                    </button>
-                  </div>
-                )}
-              </div>
+              <ChatSection
+                chat={chat}
+                inputValue={guess}
+                onInputChange={setGuess}
+                onSendMessage={sendGuess}
+                title={iAmDrawer ? 'Chat' : 'Guess / Chat'}
+                placeholder="Type your guess…"
+                isGameMode={true}
+                showInput={!iAmDrawer}
+                containerClassName="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-6 transition-all hover:border-white/20"
+                chatHeight="h-64"
+                inputButtonColor="bg-cyan-500 hover:bg-cyan-600"
+              />
 
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-6 transition-all hover:border-white/20">
                 <h3 className="text-lg font-semibold mb-3">Players</h3>
@@ -1009,6 +961,14 @@ function Lobby() {
                     </div>
                   ))}
                 </div>
+                
+                {/* Leave Game button in game view */}
+                <button
+                  onClick={handleStartFresh}
+                  className="w-full mt-4 py-2.5 flex items-center justify-center gap-2 border border-red-400/50 bg-red-500/20 text-red-300 font-medium rounded-xl hover:bg-red-500/30 hover:scale-105 transition-all"
+                >
+                  🚪 Leave Game
+                </button>
               </div>
             </div>
           </section>
