@@ -135,6 +135,11 @@ function Lobby() {
     }
   }, []);
 
+  // Sync initial connection state
+  useEffect(() => {
+    setConnected(socket.connected);
+  }, []);
+
   // Socket event handlers
   useSocketEvents({
     setRoomId,

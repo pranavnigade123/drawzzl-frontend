@@ -71,11 +71,4 @@ if (typeof window !== 'undefined') {
   (window as any).socket = socket;
 }
 
-// Connection Logs
-socket.on('connect', () => {
-  console.log('Connected to drawzzl backend! ID:', socket.id);
-});
-
-socket.on('disconnect', () => {
-  console.log('Disconnected from backend');
-});
+// Connection Logs (removed duplicate listeners - handled in useSocketEvents hook)
